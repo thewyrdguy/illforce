@@ -56,13 +56,15 @@ readSCP :: Handle -> IO (Either String SCPRec)
 readSCP fh = do
   realsize <- hFileSize fh
   contents <- hGetContents fh
-  -- print $ take 40 (show contents)
-  let scprec = runGet (parseSCPfile realsize) contents
-  print scprec
-  return scprec
+  -- TODO: when the application is not strict ($ instead of $!),
+  -- the following runtime error happens:
+  -- *** Exception: xxx.scp: hGetBufSome: illegal operation (handle is closed)
+  -- Need to figure out how to stay lazy and avoid this error.
+  return $! runGet (parseSCPfile realsize) contents
 
 main = do
   args <- getArgs
-  case args of
+  scprec <- case args of
     []    -> hSetBinaryMode stdin True >> readSCP stdin
     fn:xs -> withBinaryFile fn ReadMode $ \fh -> readSCP fh
+  print scprec
