@@ -66,7 +66,7 @@ main = do
   where
     size_n_contents fh = do
       asksize <- hIsSeekable fh
-      maybesize <- if asksize then sequence (Just (hFileSize fh))
+      maybesize <- if asksize then hFileSize fh >>= return . Just
                               else return Nothing
       contents <- hGetContents fh
       return (maybesize, contents)
