@@ -1,6 +1,6 @@
 import System.Environment (getArgs)
-import System.IO (Handle, IOMode(ReadMode), withBinaryFile, hSetBinaryMode
-                 , hFileSize, stdin)
+import System.IO (IOMode(ReadMode), openBinaryFile, hSetBinaryMode
+                 ,hIsSeekable, hFileSize, stdin)
 import Data.Maybe (fromMaybe)
 import Data.ByteString.Lazy (hGetContents)
 import Data.Binary.Get (Get, runGet, getWord8, getWord16le, getWord32le)
@@ -19,7 +19,7 @@ skip n = getWord8 >> skip (n - 1)
 parseSCPsection :: SCPRec -> Integer -> Word16
                 -> Get (Either String (SCPRec, Integer, Word16))
 parseSCPsection scprec remains crc
-  | remains == 0 = return $! Right (scprec, 0, 17652)
+  | remains == 0 = return $! Right (scprec, 0, 0)
   | remains < 8  = return $! Left ("short data " ++ (show remains))
   | otherwise = do
     seccrc <- getWord16le
@@ -33,38 +33,40 @@ parseSCPsection scprec remains crc
       }
     parseSCPsection newrec (remains - (fromIntegral seclen)) crc
 
-parseSCPfile :: Integer -> Get (Either String SCPRec)
+parseSCPfile :: Maybe Integer -> Get (Either String SCPRec)
 parseSCPfile realsize = do
   expectedcrc <- getWord16le
-  expectedsize <- getWord32le
-  if realsize == (fromIntegral expectedsize) then do
-      parseout <- parseSCPsection emptySCPRec (realsize - 6) 0
+  expectedsize_w <- getWord32le
+  let expectedsize = (fromIntegral expectedsize_w)
+  if (fromMaybe expectedsize realsize) == expectedsize then do
+      parseout <- parseSCPsection emptySCPRec (expectedsize - 6) 0
       case parseout of
         Right (scprec, _, realcrc) ->
-          if realcrc == expectedcrc then
+          -- TODO: calculate and compare checksums
+          --if realcrc == expectedcrc then
+          if True then
               return $ Right scprec
             else
               return $ Left $ "expected csum:" ++ (show expectedcrc)
-                                   ++ " real:" ++ (show realcrc)
+                              ++ " real csum:" ++ (show realcrc)
         Left err -> return $ Left err
     else
-      return $ Left $ "csum:" ++ (show expectedcrc)
-                  ++ " expected:" ++ (show expectedsize)
-                  ++ " real:" ++ (show realsize)
-
-readSCP :: Handle -> IO (Either String SCPRec)
-readSCP fh = do
-  realsize <- hFileSize fh
-  contents <- hGetContents fh
-  -- TODO: when the application is not strict ($ instead of $!),
-  -- the following runtime error happens:
-  -- *** Exception: xxx.scp: hGetBufSome: illegal operation (handle is closed)
-  -- Need to figure out how to stay lazy and avoid this error.
-  return $! runGet (parseSCPfile realsize) contents
+      return $ Left $ "expected size:" ++ (show expectedsize)
+                      ++ " real size:" ++ (show realsize)
 
 main = do
   args <- getArgs
-  scprec <- case args of
-    []    -> hSetBinaryMode stdin True >> readSCP stdin
-    fn:xs -> withBinaryFile fn ReadMode $ \fh -> readSCP fh
-  print scprec
+  hdls <- case args of
+    [] -> hSetBinaryMode stdin True >> return [stdin]
+    otherwise -> mapM (\fn -> openBinaryFile fn ReadMode) args
+  conts <- mapM size_n_contents hdls
+  scprecs <- mapM (\(size, cont)
+               -> return $ runGet (parseSCPfile size) cont) conts
+  print scprecs
+  where
+    size_n_contents fh = do
+      asksize <- hIsSeekable fh
+      maybesize <- if asksize then sequence (Just (hFileSize fh))
+                              else return Nothing
+      contents <- hGetContents fh
+      return (maybesize, contents)
