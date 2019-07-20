@@ -1,8 +1,7 @@
-import System.Environment (getArgs)
-import System.IO (IOMode(ReadMode), openBinaryFile, hSetBinaryMode
-                 ,hIsSeekable, hFileSize, stdin)
+module SCPECG.Core (SCPRec, parseSCP) where
+
 import Data.Maybe (fromMaybe)
-import Data.ByteString.Lazy (hGetContents)
+import Data.ByteString.Lazy (ByteString)
 import Data.Binary.Get (Get, runGet, getWord8, getWord16le, getWord32le)
 import Data.Word (Word8, Word16, Word32)
 
@@ -33,8 +32,8 @@ parseSCPsection scprec remains crc
       }
     parseSCPsection newrec (remains - (fromIntegral seclen)) crc
 
-parseSCPfile :: Maybe Integer -> Get (Either String SCPRec)
-parseSCPfile realsize = do
+parseSCPdata :: Maybe Integer -> Get (Either String SCPRec)
+parseSCPdata realsize = do
   expectedcrc <- getWord16le
   expectedsize_w <- getWord32le
   let expectedsize = (fromIntegral expectedsize_w)
@@ -54,19 +53,5 @@ parseSCPfile realsize = do
       return $ Left $ "expected size:" ++ (show expectedsize)
                       ++ " real size:" ++ (show realsize)
 
-main = do
-  args <- getArgs
-  hdls <- case args of
-    [] -> hSetBinaryMode stdin True >> return [stdin]
-    otherwise -> mapM (\fn -> openBinaryFile fn ReadMode) args
-  conts <- mapM size_n_contents hdls
-  scprecs <- mapM (\(size, cont)
-               -> return $ runGet (parseSCPfile size) cont) conts
-  print scprecs
-  where
-    size_n_contents fh = do
-      asksize <- hIsSeekable fh
-      maybesize <- if asksize then hFileSize fh >>= return . Just
-                              else return Nothing
-      contents <- hGetContents fh
-      return (maybesize, contents)
+parseSCP :: Maybe Integer -> ByteString -> Either String SCPRec
+parseSCP size cont = runGet (parseSCPdata size) cont
