@@ -2,24 +2,39 @@ module SCPECG.Core (SCPRec, parseSCP, mergeSCP) where
 
 import Prelude hiding (splitAt)
 import Data.Maybe (fromMaybe)
+import qualified Data.ByteString as B (ByteString, empty)
 import Data.ByteString.Lazy (ByteString, splitAt)
 import Data.Binary.Get ( Get, runGet, isolate, skip
-                       , getWord8, getWord16le, getWord32le)
+                       , getWord8, getWord16le, getWord32le
+                       , getByteString)
 import Data.Word (Word8, Word16, Word32)
 
-data SCPSec = SCPSec Integer Word16 deriving Show
+import SCPECG.Types
+
+data Vendor = Vendor { scpVendorSize :: Integer
+                     , scpVendorId   :: Word16
+                     , scpVendorData :: B.ByteString
+                     } deriving Show
+
+instance SCPSection Vendor where
+--parseSection :: Integer -> Word16 -> Get (Either String Vendor)
+  parseSection size id = do
+    dat <- getByteString (fromIntegral size)
+    return $ Right $ Vendor size id B.empty -- dat
+
+data SCPSec = S0 Int
+            | Sv Vendor
+              deriving Show
 
 data SCPRec = SCPRec [[Either String SCPSec]] deriving Show
 
 parseSCPsection :: Integer -> Word16 -> ByteString -> Either String SCPSec
 parseSCPsection size id cont =
   let
-    parseSection :: Integer -> Word16 -> Get (Either String SCPSec)
-    parseSection size id = do
-      skip (fromIntegral size)
-      return $ Right $ SCPSec size id
+    parser = case id of
+      _  -> parseSection :: Integer -> Word16 -> Get (Either String Vendor)
   in
-    runGet (isolate (fromIntegral size) (parseSection size id)) cont
+    fmap Sv $ runGet (isolate (fromIntegral size) (parser size id)) cont
 
 parseSCPsecs :: Integer -> ByteString -> [Either String SCPSec]
 parseSCPsecs size cont
