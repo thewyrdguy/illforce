@@ -11,12 +11,14 @@ import Data.Word (Word8, Word16, Word32)
 import SCPECG.Pointer
 import SCPECG.Metadata
 import SCPECG.Hufftabs
+import SCPECG.Leads
 import SCPECG.Vendor
 import SCPECG.Types
 
 data SCPSec = S0 SCPPointer
             | S1 SCPMetadata
             | S2 SCPHufftabs
+            | S3 SCPLeads
             | Sv SCPVendor
               deriving Show
 
@@ -28,6 +30,7 @@ parseSCPsection size id cont =
     0  -> S0 <$> (run parseSection :: Either String SCPPointer)
     1  -> S1 <$> (run parseSection :: Either String SCPMetadata)
     2  -> S2 <$> (run parseSection :: Either String SCPHufftabs)
+    3  -> S3 <$> (run parseSection :: Either String SCPLeads)
     _  -> Sv <$> (run parseSection :: Either String SCPVendor)
   where
     run parser = runGet (isolate (fromIntegral size) (parser size id)) cont
