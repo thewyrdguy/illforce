@@ -9,10 +9,12 @@ import Data.Binary.Get ( Get, runGet, isolate, skip
 import Data.Word (Word8, Word16, Word32)
 
 import SCPECG.Pointer
+import SCPECG.Metadata
 import SCPECG.Vendor
 import SCPECG.Types
 
 data SCPSec = S0 SCPPointer
+            | S1 SCPMetadata
             | Sv SCPVendor
               deriving Show
 
@@ -22,6 +24,7 @@ parseSCPsection :: Integer -> Word16 -> ByteString -> Either String SCPSec
 parseSCPsection size id cont =
   case id of
     0  -> S0 <$> (run parseSection :: Either String SCPPointer)
+    1  -> S1 <$> (run parseSection :: Either String SCPMetadata)
     _  -> Sv <$> (run parseSection :: Either String SCPVendor)
   where
     run parser = runGet (isolate (fromIntegral size) (parser size id)) cont

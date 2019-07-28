@@ -14,22 +14,24 @@ data SCPPointer = SCPPointer { scpPointerIdx :: [(Word16, Word32, Word32)]
 
 instance SCPSection SCPPointer where
 --parseSection :: Integer -> Word16 -> Get (Either String SCPPointer)
-  parseSection size _ = do
-    skip 8
-    pfx <- getByteString 8
-    idx <- getIdx
-    return $ if pfx == (pack "\r\rSCPECG")
-      then Right $ SCPPointer idx
-      else Left $ "Unexpected magic string: " ++ (show pfx)
-    where
-      getIdx :: Get [(Word16, Word32, Word32)]
-      getIdx = do
-        empty <- isEmpty
-        if empty
-          then return []
-          else do
-            id <- getWord16le
-            len <- getWord32le
-            off <- getWord32le
-            idx' <- getIdx
-            return $ (id, off, len):idx'
+  parseSection size _
+    | size < 26 = return $ Left $ "Pointer section too short: " ++ (show size)
+    | otherwise = do
+        skip 8
+        pfx <- getByteString 8
+        idx <- getIdx
+        return $ if pfx == (pack "\r\rSCPECG")
+          then Right $ SCPPointer idx
+          else Left $ "Unexpected magic string: " ++ (show pfx)
+        where
+          getIdx :: Get [(Word16, Word32, Word32)]
+          getIdx = do
+            empty <- isEmpty
+            if empty
+              then return []
+              else do
+                id <- getWord16le
+                len <- getWord32le
+                off <- getWord32le
+                idx' <- getIdx
+                return $ (id, off, len):idx'
