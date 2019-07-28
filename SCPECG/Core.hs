@@ -14,6 +14,7 @@ import SCPECG.Hufftabs
 import SCPECG.Leads
 import SCPECG.QRSLocs
 import SCPECG.RefBeats
+import SCPECG.Signal
 import SCPECG.Vendor
 import SCPECG.Types
 
@@ -23,6 +24,7 @@ data SCPSec = S0 SCPPointer
             | S3 SCPLeads
             | S4 SCPQRSLocs
             | S5 SCPRefBeats
+            | S6 SCPSignal
             | Sv SCPVendor
               deriving Show
 
@@ -37,6 +39,7 @@ parseSCPsection size id cont =
     3  -> S3 <$> (run parseSection :: Either String SCPLeads)
     4  -> S4 <$> (run parseSection :: Either String SCPQRSLocs)
     5  -> S5 <$> (run parseSection :: Either String SCPRefBeats)
+    6  -> S6 <$> (run parseSection :: Either String SCPSignal)
     _  -> Sv <$> (run parseSection :: Either String SCPVendor)
   where
     run parser = runGet (isolate (fromIntegral size) (parser size id)) cont
