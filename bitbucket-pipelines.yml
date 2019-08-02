@@ -4,5 +4,11 @@ pipelines:
   default:
     - step:
         script:
-          - cabal new-build
+          - echo "Dummy default step"
+
+  branches:
+    master:
+      - step:
+          script:
+            - cabal new-build
 
