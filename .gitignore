@@ -2,4 +2,5 @@
 *.hi
 *.scp
 scpecg
-dist
+dist*
+.ghc*
