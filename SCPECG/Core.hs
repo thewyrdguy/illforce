@@ -3,10 +3,12 @@ module SCPECG.Core (SCPRec, parseSCP, mergeSCP) where
 import Prelude hiding (splitAt)
 import Data.Maybe (fromMaybe)
 import Data.ByteString.Lazy (ByteString, splitAt)
-import Data.Binary.Get ( Get, runGet, isolate, skip
+import Data.Binary.Get ( Get, runGet, isolate, skip, lookAhead, isEmpty
                        , getWord8, getWord16le, getWord32le
                        , getByteString)
 import Data.Word (Word8, Word16, Word32)
+
+import Data.Digest.CRC
 
 import SCPECG.Pointer
 import SCPECG.Metadata
@@ -63,27 +65,36 @@ parseSCPsecs size cont
       in
         (parseSCPsection secsz id seccont):(parseSCPsecs (size - secsz) cont')
 
+getCRC :: Get Word16
+getCRC = getCRCb 0xffff
+  where
+    getCRCb crc = do
+      eod <- isEmpty
+      if eod
+        then return crc
+        else do
+          b <- getWord8
+          let crc' = crc16Update 0x1021 False crc b
+          getCRCb crc'
+
 parseSCP :: Maybe Integer -> ByteString -> [Either String SCPSec]
 parseSCP maybesize cont =
   let
-    (header, rest) = splitAt 6 cont
-    (expectedcrc, expectedsize) = runGet (isolate 6 parseFileHeader) header
-    realcrc = expectedcrc -- TODO: realcrc = calccrc(rest)
-    parseFileHeader :: Get (Word16, Integer)
-    parseFileHeader = do
-      crc <- getWord16le
-      size_w <- getWord32le
-      return (crc, fromIntegral size_w)
+    (crchdr, rest_to_crc) = splitAt 2 cont
+    expectedcrc = runGet getWord16le crchdr -- This kills lazy consumption
+    realcrc = runGet getCRC rest_to_crc
+    (sizehdr, rest_to_parse) = splitAt 4 rest_to_crc
+    expectedsize = fromIntegral $ runGet getWord32le sizehdr
   in
     if (fromMaybe expectedsize maybesize) == expectedsize
-      then
+      then do
         if realcrc == expectedcrc
-          then parseSCPsecs (expectedsize - 6) rest
+          then parseSCPsecs (expectedsize - 6) rest_to_parse
           else [Left $ "expected csum:" ++ (show expectedcrc)
                        ++ " real csum:" ++ (show realcrc)]
       else
-          [Left $ "expected size:" ++ (show expectedsize)
-                  ++ " real size:" ++ (show maybesize)]
+        [Left $ "expected size:" ++ (show expectedsize)
+                ++ " real size:" ++ (show maybesize)]
 
 mergeSCP :: [[Either String SCPSec]] -> Either String SCPRec
 mergeSCP ll = Right $ SCPRec ll  -- TODO: implement merge

@@ -11,12 +11,15 @@
    renamed as a precausion to avoid name clash.
 
 -}
-module Data.Digest.CRC16CCITT (crc16ccitt) where
+module Data.Digest.CRC (crc16Update) where
 
 import Prelude hiding (foldl')
 import Data.ByteString hiding (foldl)
 import Data.Word(Word8,Word16)
 import Data.Bits
+
+{-
+Usage:
 
 crc16 :: Word16 -> Bool -> Word16 -> ByteString -> Word16
 crc16 poly inverse initial =
@@ -24,6 +27,7 @@ crc16 poly inverse initial =
 
 crc16ccitt ::  ByteString -> Word16
 crc16ccitt = crc16 0x1021 False 0xffff
+-}
 
 -- | crc16 calculation
 -- This uses the simple method based on /bit shifting/.
