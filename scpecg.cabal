@@ -55,7 +55,7 @@ library
                        SCPECG.QRSLocs, SCPECG.RefBeats, SCPECG.Signal
 
   -- Modules included in this library but not exported.
-  other-modules:       Data.Digest.CRC16CCITT, SCPECG.Core
+  other-modules:       Data.Digest.CRC, SCPECG.Core
 
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:
