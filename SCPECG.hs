@@ -1,11 +1,11 @@
-module SCPECG (parseSCPFiles, SCPRec) where
+module SCPECG (parseSCPFiles, SCPRecord) where
 
 import System.IO (IOMode(ReadMode), openBinaryFile, hSetBinaryMode
                  ,hIsSeekable, hFileSize, stdin)
 import Data.ByteString.Lazy (hGetContents)
 import SCPECG.Core
 
-parseSCPFiles :: [String] -> IO (Either String SCPRec)
+parseSCPFiles :: [String] -> IO [Either String SCPRecord]
 parseSCPFiles fnames = do
   hdls <- case fnames of
     [] -> hSetBinaryMode stdin True >> return [stdin]

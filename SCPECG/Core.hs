@@ -1,4 +1,4 @@
-module SCPECG.Core (SCPRec, parseSCP, mergeSCP) where
+module SCPECG.Core (SCPRecord, parseSCP, mergeSCP) where
 
 import Prelude hiding (splitAt)
 import Data.Maybe (fromMaybe)
@@ -20,50 +20,83 @@ import SCPECG.Signal
 import SCPECG.Vendor
 import SCPECG.Types
 
-data SCPSec = S0 SCPPointer
-            | S1 SCPMetadata
-            | S2 SCPHufftabs
-            | S3 SCPLeads
-            | S4 SCPQRSLocs
-            | S5 SCPRefBeats
-            | S6 SCPSignal
-            | Sv SCPVendor
-              deriving Show
+data SCPRecord = SCPRecord { s0 :: Maybe SCPPointer
+                           , s1 :: Maybe SCPMetadata
+                           , s2 :: Maybe SCPHufftabs
+                           , s3 :: Maybe SCPLeads
+                           , s4 :: Maybe SCPQRSLocs
+                           , s5 :: Maybe SCPRefBeats
+                           , s6 :: Maybe SCPSignal
+                           , sv :: Maybe SCPVendor
+                           } deriving Show
+emptyRecord = SCPRecord    Nothing
+                           Nothing
+                           Nothing
+                           Nothing
+                           Nothing
+                           Nothing
+                           Nothing
+                           Nothing
 
-data SCPRec = SCPRec [[Either String SCPSec]] deriving Show
-
-parseSCPsection :: Integer -> Word16 -> ByteString -> Either String SCPSec
-parseSCPsection size id cont =
+-- return a new copy of the record with one more section filled
+parseSCPsection :: SCPRecord -> Integer -> Word16 -> ByteString -> Either String SCPRecord
+parseSCPsection rec size id cont =
   case id of
-    0  -> S0 <$> (run parseSection :: Either String SCPPointer)
-    1  -> S1 <$> (run parseSection :: Either String SCPMetadata)
-    2  -> S2 <$> (run parseSection :: Either String SCPHufftabs)
-    3  -> S3 <$> (run parseSection :: Either String SCPLeads)
-    4  -> S4 <$> (run parseSection :: Either String SCPQRSLocs)
-    5  -> S5 <$> (run parseSection :: Either String SCPRefBeats)
-    6  -> S6 <$> (run parseSection :: Either String SCPSignal)
-    _  -> Sv <$> (run parseSection :: Either String SCPVendor)
-  where
-    run parser = runGet (isolate (fromIntegral size) (parser size id)) cont
+    0  -> case runGet (parseSection size id) cont of
+            Left err -> Left err
+            Right val -> Right $ rec { s0 = Just val }
+    1  -> case runGet (parseSection size id) cont of
+            Left err -> Left err
+            Right val -> Right $ rec { s1 = Just val }
+    2  -> case runGet (parseSection size id) cont of
+            Left err -> Left err
+            Right val -> Right $ rec { s2 = Just val }
+    3  -> case runGet (parseSection size id) cont of
+            Left err -> Left err
+            Right val -> Right $ rec { s3 = Just val }
+    4  -> case runGet (parseSection size id) cont of
+            Left err -> Left err
+            Right val -> Right $ rec { s4 = Just val }
+    5  -> case runGet (parseSection size id) cont of
+            Left err -> Left err
+            Right val -> Right $ rec { s5 = Just val }
+    6  -> case runGet (parseSection size id) cont of
+            Left err -> Left err
+            Right val -> Right $ rec { s6 = Just val }
+    _  -> case runGet (parseSection size id) cont of
+            Left err -> Left err
+            Right val -> Right $ rec { sv = Just val }
 
-parseSCPsecs :: Integer -> ByteString -> [Either String SCPSec]
-parseSCPsecs size cont
+-- Parse sections and return lazy list of incrementally filled SCPRecords
+parseSCPsecs :: SCPRecord -> Integer -> ByteString -> [Either String SCPRecord]
+parseSCPsecs accum size cont
   | size == 0 = []
   | size < 8  = [Left ("short data " ++ (show size))]
   | otherwise =
       let
-        (header, rest) = splitAt 8 cont
-        (expectedcrc, id, secsz) = runGet (isolate 8 parseSecHeader) header
-        realcrc = expectedcrc -- TODO: realcrc = calccrc(rest)
-        parseSecHeader :: Get (Word16, Word16, Integer)
+        (crchdr, rest_to_crc) = splitAt 2 cont
+        expectedcrc = runGet getWord16le crchdr
+        --realcrc = runGet getCRC rest_to_crc -- TODO
+        realcrc = expectedcrc
+        (header, rest_to_parse) = splitAt 6 rest_to_crc
+        (id, secsz) = runGet parseSecHeader header
+        -- parseSecHeader :: Get (Word16, Integer)
         parseSecHeader = do
-          crc <- getWord16le
           id <- getWord16le
           size_w <- getWord32le
-          return (crc, id, fromIntegral size_w)
-        (seccont, cont') = splitAt (fromIntegral secsz) cont
+          return (id, fromIntegral size_w)
+        (seccont, rest) = splitAt (fromIntegral secsz) cont
+        result = parseSCPsection accum secsz id seccont
       in
-        (parseSCPsection secsz id seccont):(parseSCPsecs (size - secsz) cont')
+        if realcrc == expectedcrc
+          then
+            case result of
+              Left  _      -> [result]  -- quit parsing
+              Right accum' -> result:(parseSCPsecs accum' (size - secsz) rest)
+          else
+            [Left $ "expected crc:" ++ (show expectedcrc)
+                    ++ " real crc:" ++ (show realcrc)
+                  ++ " in section " ++ (show id)]
 
 getCRC :: Get Word16
 getCRC = getCRCb 0xffff
@@ -77,7 +110,7 @@ getCRC = getCRCb 0xffff
           let crc' = crc16Update 0x1021 False crc b
           getCRCb crc'
 
-parseSCP :: Maybe Integer -> ByteString -> [Either String SCPSec]
+parseSCP :: Maybe Integer -> ByteString -> [Either String SCPRecord]
 parseSCP maybesize cont =
   let
     (crchdr, rest_to_crc) = splitAt 2 cont
@@ -89,12 +122,13 @@ parseSCP maybesize cont =
     if (fromMaybe expectedsize maybesize) == expectedsize
       then do
         if realcrc == expectedcrc
-          then parseSCPsecs (expectedsize - 6) rest_to_parse
-          else [Left $ "expected csum:" ++ (show expectedcrc)
-                       ++ " real csum:" ++ (show realcrc)]
+          then (Right emptyRecord):(parseSCPsecs emptyRecord
+                                      (expectedsize - 6) rest_to_parse)
+          else [Left $ "expected crc:" ++ (show expectedcrc)
+                       ++ " real crc:" ++ (show realcrc)]
       else
         [Left $ "expected size:" ++ (show expectedsize)
                 ++ " real size:" ++ (show maybesize)]
 
-mergeSCP :: [[Either String SCPSec]] -> Either String SCPRec
-mergeSCP ll = Right $ SCPRec ll  -- TODO: implement merge
+mergeSCP :: [[Either String SCPRecord]] -> [Either String SCPRecord]
+mergeSCP ll = head ll  -- TODO: implement merge
