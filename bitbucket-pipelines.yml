@@ -1,11 +1,6 @@
 image: haskell:8.4.4
 
 pipelines:
-  default:
-    - step:
-        script:
-          - echo "Dummy default step"
-
   branches:
     master:
       - step:
