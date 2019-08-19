@@ -27,7 +27,12 @@ data SCPRecord = SCPRecord { s0 :: Maybe SCPPointer
                            , s4 :: Maybe SCPQRSLocs
                            , s5 :: Maybe SCPRefBeats
                            , s6 :: Maybe SCPSignal
-                           , sv :: Maybe SCPVendor
+                           , s7 :: Maybe ()
+                           , s8 :: Maybe ()
+                           , s9 :: Maybe ()
+                           , s10 :: Maybe ()
+                           , s11 :: Maybe ()
+                           , sv :: [SCPVendor]
                            } deriving Show
 emptyRecord = SCPRecord    Nothing
                            Nothing
@@ -37,11 +42,21 @@ emptyRecord = SCPRecord    Nothing
                            Nothing
                            Nothing
                            Nothing
+                           Nothing
+                           Nothing
+                           Nothing
+                           Nothing
+                           []
 
 -- return a new copy of the record with one more section filled
-parseSCPsection :: SCPRecord -> Integer -> Word16 -> ByteString -> Either String SCPRecord
+parseSCPsection :: SCPRecord
+                -> Integer
+                -> Word16
+                -> ByteString
+                -> Either String SCPRecord
 parseSCPsection rec size id cont =
   case id of
+    -- liftA2 (\r v -> r { s0 = Just v }) rec $ runGet (parseSection size id) cont
     0  -> case runGet (parseSection size id) cont of
             Left err -> Left err
             Right val -> Right $ rec { s0 = Just val }
@@ -65,7 +80,7 @@ parseSCPsection rec size id cont =
             Right val -> Right $ rec { s6 = Just val }
     _  -> case runGet (parseSection size id) cont of
             Left err -> Left err
-            Right val -> Right $ rec { sv = Just val }
+            Right val -> Right $ rec { sv = val:(sv rec) }
 
 -- Parse sections and return lazy list of incrementally filled SCPRecords
 parseSCPsecs :: SCPRecord -> Integer -> ByteString -> [Either String SCPRecord]
