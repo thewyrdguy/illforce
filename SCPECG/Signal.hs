@@ -2,9 +2,10 @@ module SCPECG.Signal (SCPSignal) where
 
 import Data.ByteString.Lazy (ByteString)
 import Data.Binary.Get ( Get, runGet, isEmpty, isolate, skip
-                       , getWord8, getWord16le, getWord32le
+                       , getWord8, getWord16le, getWord32le, getInt16le
                        , getByteString, getRemainingLazyByteString)
 import Data.Word (Word8, Word16, Word32)
+import Data.Int (Int16)
 
 import SCPECG.Types
 
@@ -14,7 +15,7 @@ data SCPSignal = SCPSignal { scpSignalnVper1 :: Word16
                            , scpSignalCprType :: Word8
                            , scpSignalLeadl :: Word16
                            , scpSignalDataLen :: Int
-                           , scpSignalData :: [Word16]
+                           , scpSignalData :: [Int16]
                            } deriving Show
 
 instance SCPSection SCPSignal where
@@ -31,12 +32,12 @@ instance SCPSection SCPSignal where
     let len = length dat
     return $ Right $ SCPSignal mult period enc comp leadl len dat
     where
-      getDat :: Get [Word16]
+      getDat :: Get [Int16]
       getDat = do
         empty <- isEmpty
         if empty
           then return []
           else do
-            word <- getWord16le
+            word <- getInt16le
             dat' <- getDat
             return $ word:dat'
