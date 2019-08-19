@@ -1,6 +1,7 @@
 module SCPECG.Core (SCPRecord, parseSCP, mergeSCP) where
 
 import Prelude hiding (splitAt)
+import Control.Applicative (liftA2)
 import Data.Maybe (fromMaybe)
 import Data.ByteString.Lazy (ByteString, splitAt)
 import Data.Binary.Get ( Get, runGet, isolate, skip, lookAhead, isEmpty
@@ -19,6 +20,10 @@ import SCPECG.RefBeats
 import SCPECG.Signal
 import SCPECG.Vendor
 import SCPECG.Types
+
+-- Stub for non-implemented section parsers:
+instance SCPSection () where
+  parseSection size id = return $ Right ()
 
 data SCPRecord = SCPRecord { s0 :: Maybe SCPPointer
                            , s1 :: Maybe SCPMetadata
@@ -56,31 +61,32 @@ parseSCPsection :: SCPRecord
                 -> Either String SCPRecord
 parseSCPsection rec size id cont =
   case id of
-    -- liftA2 (\r v -> r { s0 = Just v }) rec $ runGet (parseSection size id) cont
-    0  -> case runGet (parseSection size id) cont of
-            Left err -> Left err
-            Right val -> Right $ rec { s0 = Just val }
-    1  -> case runGet (parseSection size id) cont of
-            Left err -> Left err
-            Right val -> Right $ rec { s1 = Just val }
-    2  -> case runGet (parseSection size id) cont of
-            Left err -> Left err
-            Right val -> Right $ rec { s2 = Just val }
-    3  -> case runGet (parseSection size id) cont of
-            Left err -> Left err
-            Right val -> Right $ rec { s3 = Just val }
-    4  -> case runGet (parseSection size id) cont of
-            Left err -> Left err
-            Right val -> Right $ rec { s4 = Just val }
-    5  -> case runGet (parseSection size id) cont of
-            Left err -> Left err
-            Right val -> Right $ rec { s5 = Just val }
-    6  -> case runGet (parseSection size id) cont of
-            Left err -> Left err
-            Right val -> Right $ rec { s6 = Just val }
-    _  -> case runGet (parseSection size id) cont of
-            Left err -> Left err
-            Right val -> Right $ rec { sv = val:(sv rec) }
+    0  -> liftA2 (\r v -> r { s0  = Just v }) (Right rec) $
+            runGet (parseSection size id) cont
+    1  -> liftA2 (\r v -> r { s1  = Just v }) (Right rec) $
+            runGet (parseSection size id) cont
+    2  -> liftA2 (\r v -> r { s2  = Just v }) (Right rec) $
+            runGet (parseSection size id) cont
+    3  -> liftA2 (\r v -> r { s3  = Just v }) (Right rec) $
+            runGet (parseSection size id) cont
+    4  -> liftA2 (\r v -> r { s4  = Just v }) (Right rec) $
+            runGet (parseSection size id) cont
+    5  -> liftA2 (\r v -> r { s5  = Just v }) (Right rec) $
+            runGet (parseSection size id) cont
+    6  -> liftA2 (\r v -> r { s6  = Just v }) (Right rec) $
+            runGet (parseSection size id) cont
+    7  -> liftA2 (\r v -> r { s7  = Just v }) (Right rec) $
+            runGet (parseSection size id) cont
+    8  -> liftA2 (\r v -> r { s8  = Just v }) (Right rec) $
+            runGet (parseSection size id) cont
+    9  -> liftA2 (\r v -> r { s9  = Just v }) (Right rec) $
+            runGet (parseSection size id) cont
+    10 -> liftA2 (\r v -> r { s10 = Just v }) (Right rec) $
+            runGet (parseSection size id) cont
+    11 -> liftA2 (\r v -> r { s11 = Just v }) (Right rec) $
+            runGet (parseSection size id) cont
+    _  -> liftA2 (\r v -> r { sv  = v:(sv r) }) (Right rec) $
+            runGet (parseSection size id) cont
 
 -- Parse sections and return lazy list of incrementally filled SCPRecords
 parseSCPsecs :: SCPRecord -> Integer -> ByteString -> [Either String SCPRecord]
