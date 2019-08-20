@@ -3,6 +3,7 @@ module SCPECG.Core (SCPRecord, parseSCP, mergeSCP) where
 import Prelude hiding (splitAt)
 import Control.Applicative (liftA2)
 import Data.Maybe (fromMaybe)
+import Data.List (uncons)
 import Data.ByteString.Lazy (ByteString, splitAt)
 import Data.Binary.Get ( Get, runGet, isolate, skip, lookAhead, isEmpty
                        , getWord8, getWord16le, getWord32le
@@ -151,5 +152,12 @@ parseSCP maybesize cont =
         [Left $ "expected size:" ++ (show expectedsize)
                 ++ " real size:" ++ (show maybesize)]
 
-mergeSCP :: [[Either String SCPRecord]] -> [Either String SCPRecord]
-mergeSCP ll = head ll  -- TODO: implement merge
+mergeSCP :: [[Either String SCPRecord]] -> Either String SCPRecord
+mergeSCP ll = mergeSCP' (Right emptyRecord) ll
+  where
+  mergeSCP' accum ll =
+    case fmap unzip $ sequenceA $ fmap uncons ll of
+      -- pick head of each of the sublists:
+      -- [[1,2,3],[4,5,6],[7,8,9]] -> Just ([1,4,7],[[2,3],[5,6],[8,9]])
+      Nothing  -> accum  -- at the end of at least one of the sublists
+      Just (cur, ll') -> mergeSCP' (head cur) ll'  -- TODO: implement merge
