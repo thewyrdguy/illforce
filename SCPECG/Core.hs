@@ -26,74 +26,50 @@ import SCPECG.Types
 instance SCPSection () where
   parseSection size id = return $ Right ()
 
-data SCPRecord = SCPRecord { s0 :: Maybe SCPPointer
-                           , s1 :: Maybe SCPMetadata
-                           , s2 :: Maybe SCPHufftabs
-                           , s3 :: Maybe SCPLeads
-                           , s4 :: Maybe SCPQRSLocs
-                           , s5 :: Maybe SCPRefBeats
-                           , s6 :: Maybe SCPSignal
-                           , s7 :: Maybe ()
-                           , s8 :: Maybe ()
-                           , s9 :: Maybe ()
-                           , s10 :: Maybe ()
-                           , s11 :: Maybe ()
-                           , sv :: [SCPVendor]
-                           } deriving Show
-emptyRecord = SCPRecord    Nothing
-                           Nothing
-                           Nothing
-                           Nothing
-                           Nothing
-                           Nothing
-                           Nothing
-                           Nothing
-                           Nothing
-                           Nothing
-                           Nothing
-                           Nothing
-                           []
+data SCPSec = S0  SCPPointer
+            | S1  SCPMetadata
+            | S2  SCPHufftabs
+            | S3  SCPLeads
+            | S4  SCPQRSLocs
+            | S5  SCPRefBeats
+            | S6  SCPSignal
+            | S7  ()
+            | S8  ()
+            | S9  ()
+            | S10 ()
+            | S11 ()
+            | Sv  SCPVendor
+            deriving Show
 
--- return a new copy of the record with one more section filled
-parseSCPsection :: SCPRecord
-                -> Integer
+type SCPRecord = [(Word16, Either String SCPSec)]
+
+parseSCPsection :: Integer
                 -> Word16
                 -> ByteString
-                -> Either String SCPRecord
-parseSCPsection rec size id cont =
+                -> Either String SCPSec
+parseSCPsection size id cont =
   case id of
-    0  -> liftA2 (\r v -> r { s0  = Just v }) (Right rec) $
-            runGet (parseSection size id) cont
-    1  -> liftA2 (\r v -> r { s1  = Just v }) (Right rec) $
-            runGet (parseSection size id) cont
-    2  -> liftA2 (\r v -> r { s2  = Just v }) (Right rec) $
-            runGet (parseSection size id) cont
-    3  -> liftA2 (\r v -> r { s3  = Just v }) (Right rec) $
-            runGet (parseSection size id) cont
-    4  -> liftA2 (\r v -> r { s4  = Just v }) (Right rec) $
-            runGet (parseSection size id) cont
-    5  -> liftA2 (\r v -> r { s5  = Just v }) (Right rec) $
-            runGet (parseSection size id) cont
-    6  -> liftA2 (\r v -> r { s6  = Just v }) (Right rec) $
-            runGet (parseSection size id) cont
-    7  -> liftA2 (\r v -> r { s7  = Just v }) (Right rec) $
-            runGet (parseSection size id) cont
-    8  -> liftA2 (\r v -> r { s8  = Just v }) (Right rec) $
-            runGet (parseSection size id) cont
-    9  -> liftA2 (\r v -> r { s9  = Just v }) (Right rec) $
-            runGet (parseSection size id) cont
-    10 -> liftA2 (\r v -> r { s10 = Just v }) (Right rec) $
-            runGet (parseSection size id) cont
-    11 -> liftA2 (\r v -> r { s11 = Just v }) (Right rec) $
-            runGet (parseSection size id) cont
-    _  -> liftA2 (\r v -> r { sv  = v:(sv r) }) (Right rec) $
-            runGet (parseSection size id) cont
+    0  -> S0  <$> runGet (parseSection size id) cont
+    1  -> S1  <$> runGet (parseSection size id) cont
+    2  -> S2  <$> runGet (parseSection size id) cont
+    3  -> S3  <$> runGet (parseSection size id) cont
+    4  -> S4  <$> runGet (parseSection size id) cont
+    5  -> S5  <$> runGet (parseSection size id) cont
+    6  -> S6  <$> runGet (parseSection size id) cont
+    7  -> S7  <$> runGet (parseSection size id) cont
+    8  -> S8  <$> runGet (parseSection size id) cont
+    9  -> S9  <$> runGet (parseSection size id) cont
+    10 -> S10 <$> runGet (parseSection size id) cont
+    11 -> S11 <$> runGet (parseSection size id) cont
+    _  -> Sv  <$> runGet (parseSection size id) cont
 
--- Parse sections and return lazy list of incrementally filled SCPRecords
-parseSCPsecs :: SCPRecord -> Integer -> ByteString -> [Either String SCPRecord]
-parseSCPsecs accum size cont
+-- Parse sections and return lazy list of sections
+parseSCPsecs :: Integer
+             -> ByteString
+             -> [(Word16, Either String SCPSec)]
+parseSCPsecs size cont
   | size == 0 = []
-  | size < 8  = [Left ("short data " ++ (show size))]
+  | size < 8  = [(999, Left ("short data " ++ (show size)))]
   | otherwise =
       let
         (crchdr, rest_to_crc) = splitAt 2 cont
@@ -108,17 +84,17 @@ parseSCPsecs accum size cont
           size_w <- getWord32le
           return (id, fromIntegral size_w)
         (seccont, rest) = splitAt (fromIntegral secsz) cont
-        result = parseSCPsection accum secsz id seccont
       in
-        if realcrc == expectedcrc
-          then
-            case result of
-              Left  _      -> [result]  -- quit parsing
-              Right accum' -> result:(parseSCPsecs accum' (size - secsz) rest)
-          else
-            [Left $ "expected crc:" ++ (show expectedcrc)
-                    ++ " real crc:" ++ (show realcrc)
-                  ++ " in section " ++ (show id)]
+        case parseSCPsection secsz id seccont of
+          Left  err -> [(999, Left err)]  -- quit parsing
+          Right res ->
+            if realcrc == expectedcrc
+              then
+                (id, Right res):(parseSCPsecs (size - secsz) rest)
+              else
+                [(999, Left $ "expected crc:" ++ (show expectedcrc)
+                              ++ " real crc:" ++ (show realcrc)
+                            ++ " in section " ++ (show id))]
 
 getCRC :: Get Word16
 getCRC = getCRCb 0xffff
@@ -132,7 +108,7 @@ getCRC = getCRCb 0xffff
           let crc' = crc16Update 0x1021 False crc b
           getCRCb crc'
 
-parseSCP :: Maybe Integer -> ByteString -> [Either String SCPRecord]
+parseSCP :: Maybe Integer -> ByteString -> [(Word16, Either String SCPSec)]
 parseSCP maybesize cont =
   let
     (crchdr, rest_to_crc) = splitAt 2 cont
@@ -144,20 +120,18 @@ parseSCP maybesize cont =
     if (fromMaybe expectedsize maybesize) == expectedsize
       then do
         if realcrc == expectedcrc
-          then (Right emptyRecord):(parseSCPsecs emptyRecord
-                                      (expectedsize - 6) rest_to_parse)
-          else [Left $ "expected crc:" ++ (show expectedcrc)
-                       ++ " real crc:" ++ (show realcrc)]
+          then parseSCPsecs (expectedsize - 6) rest_to_parse
+          else [(999, Left $ "expected crc:" ++ (show expectedcrc)
+                             ++ " real crc:" ++ (show realcrc))]
       else
-        [Left $ "expected size:" ++ (show expectedsize)
-                ++ " real size:" ++ (show maybesize)]
+        [(999, Left $ "expected size:" ++ (show expectedsize)
+                      ++ " real size:" ++ (show maybesize))]
 
-mergeSCP :: [[Either String SCPRecord]] -> Either String SCPRecord
-mergeSCP ll = mergeSCP' (Right emptyRecord) ll
-  where
-  mergeSCP' accum ll =
-    case fmap unzip $ sequenceA $ fmap uncons ll of
-      -- pick head of each of the sublists:
-      -- [[1,2,3],[4,5,6],[7,8,9]] -> Just ([1,4,7],[[2,3],[5,6],[8,9]])
-      Nothing  -> accum  -- at the end of at least one of the sublists
-      Just (cur, ll') -> mergeSCP' (head cur) ll'  -- TODO: implement merge
+mergeSCP :: [[(Word16, Either String SCPSec)]]
+         -> [(Word16, Either String SCPSec)]
+mergeSCP ll =
+  case fmap unzip $ sequenceA $ fmap uncons ll of
+    -- pick head of each of the sublists:
+    -- [[1,2,3],[4,5,6],[7,8,9]] -> Just ([1,4,7],[[2,3],[5,6],[8,9]])
+    Nothing  -> []  -- at the end of at least one of the sublists
+    Just (cur, ll') -> (head cur):(mergeSCP ll')  -- TODO: implement merge

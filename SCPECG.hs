@@ -5,7 +5,7 @@ import System.IO (IOMode(ReadMode), openBinaryFile, hSetBinaryMode
 import Data.ByteString.Lazy (hGetContents)
 import SCPECG.Core
 
-parseSCPFiles :: [String] -> IO (Either String SCPRecord)
+parseSCPFiles :: [String] -> IO SCPRecord
 parseSCPFiles fnames = do
   hdls <- case fnames of
     [] -> hSetBinaryMode stdin True >> return [stdin]
