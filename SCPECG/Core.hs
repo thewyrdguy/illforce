@@ -9,6 +9,7 @@ import Data.Binary.Get ( Get, runGet, isolate, skip, lookAhead, isEmpty
                        , getWord8, getWord16le, getWord32le
                        , getByteString)
 import Data.Word (Word8, Word16, Word32)
+import Data.Int (Int64)
 
 import Data.Digest.CRC
 
@@ -64,7 +65,7 @@ parseSCPsection size id cont =
     _  -> Sv  <$> runGet (parseSection size id) cont
 
 -- Parse sections and return lazy list of sections
-parseSCPsecs :: Integer
+parseSCPsecs :: Int64
              -> ByteString
              -> [(Word16, Either String SCPSec)]
 parseSCPsecs size cont
@@ -72,20 +73,18 @@ parseSCPsecs size cont
   | size < 8  = [(999, Left ("short data " ++ (show size)))]
   | otherwise =
       let
-        (crchdr, rest_to_crc) = splitAt 2 cont
-        expectedcrc = runGet getWord16le crchdr
-        --realcrc = runGet getCRC rest_to_crc -- TODO
-        realcrc = expectedcrc
-        (header, rest_to_parse) = splitAt 6 rest_to_crc
-        (id, secsz) = runGet parseSecHeader header
-        -- parseSecHeader :: Get (Word16, Integer)
+        (expectedcrc, id, secsz) = runGet (isolate 8 parseSecHeader) cont
+        parseSecHeader :: Get (Word16, Word16, Int64)
         parseSecHeader = do
+          crc <- getWord16le
           id <- getWord16le
           size_w <- getWord32le
-          return (id, fromIntegral size_w)
-        (seccont, rest) = splitAt (fromIntegral secsz) cont
+          return (crc, id, fromIntegral size_w)
+        (seccont, rest) = splitAt secsz cont
+        (_, rest_to_crc) = splitAt 2 seccont
+        realcrc = runGet getCRC rest_to_crc
       in
-        case parseSCPsection secsz id seccont of
+        case parseSCPsection (fromIntegral secsz) id seccont of
           Left  err -> [(999, Left err)]  -- quit parsing
           Right res ->
             if realcrc == expectedcrc
@@ -117,7 +116,7 @@ parseSCP maybesize cont =
     (sizehdr, rest_to_parse) = splitAt 4 rest_to_crc
     expectedsize = fromIntegral $ runGet getWord32le sizehdr
   in
-    if (fromMaybe expectedsize maybesize) == expectedsize
+    if fromMaybe expectedsize (fromIntegral <$> maybesize) == expectedsize
       then do
         if realcrc == expectedcrc
           then parseSCPsecs (expectedsize - 6) rest_to_parse
