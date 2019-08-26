@@ -133,4 +133,11 @@ mergeSCP ll =
     -- pick head of each of the sublists:
     -- [[1,2,3],[4,5,6],[7,8,9]] -> Just ([1,4,7],[[2,3],[5,6],[8,9]])
     Nothing  -> []  -- at the end of at least one of the sublists
-    Just (cur, ll') -> (head cur):(mergeSCP ll')  -- TODO: implement merge
+    Just (cur, ll') -> (mergeSec (unzip cur)):(mergeSCP ll')
+    where
+      mergeSec :: ([Word16], [Either String SCPSec])
+               -> (Word16, Either String SCPSec)
+      mergeSec (ids, members)
+        | all (== head ids) (tail ids) =  -- all IDs are the same
+          (head ids, head members)  -- TODO: implement merge
+        | otherwise = (999, Left ("Secion ID mismatch: " ++ (show ids)))
