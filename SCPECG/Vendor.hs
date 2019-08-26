@@ -1,9 +1,9 @@
 module SCPECG.Vendor (SCPVendor) where
 
-import Data.ByteString (ByteString)
+import Data.ByteString.Lazy (ByteString)
 import Data.Binary.Get ( Get, runGet, isolate, skip
                        , getWord8, getWord16le, getWord32le
-                       , getByteString)
+                       , getLazyByteString)
 import Data.Word (Word8, Word16, Word32)
 
 import SCPECG.Types
@@ -21,5 +21,5 @@ instance Show SCPVendor where
 instance SCPSection SCPVendor where
 --parseSection :: Integer -> Word16 -> Get (Either String SCPVendor)
   parseSection size id = do
-    dat <- getByteString (fromIntegral size)
+    dat <- getLazyByteString (fromIntegral size)
     return $ Right $ SCPVendor size id dat
