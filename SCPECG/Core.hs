@@ -23,6 +23,13 @@ import SCPECG.Signal
 import SCPECG.Vendor
 import SCPECG.Types
 
+class SameShape a where
+  (=~) :: a -> a -> Bool
+
+instance SameShape (Either a b) where
+  Right _ =~ Right _ = True
+  _       =~ _       = False
+
 -- Stub for non-implemented section parsers:
 instance SCPSection () where
   parseSection size id = return $ Right ()
@@ -42,6 +49,22 @@ data SCPSec = S0  SCPPointer
             | Sv  SCPVendor
             deriving Show
 
+instance SameShape SCPSec where
+  (S0  _) =~ (S0  _) = True
+  (S1  _) =~ (S1  _) = True
+  (S2  _) =~ (S2  _) = True
+  (S3  _) =~ (S3  _) = True
+  (S4  _) =~ (S4  _) = True
+  (S5  _) =~ (S5  _) = True
+  (S6  _) =~ (S6  _) = True
+  (S7  _) =~ (S7  _) = True
+  (S8  _) =~ (S8  _) = True
+  (S9  _) =~ (S9  _) = True
+  (S10 _) =~ (S10 _) = True
+  (S11 _) =~ (S11 _) = True
+  (Sv  _) =~ (Sv  _) = True
+  _       =~ _       = False
+
 instance Semigroup SCPSec where
   S0  x <> S0  y = S0  (x <> y)
   S1  x <> S1  y = S1  (x <> y)
@@ -56,9 +79,10 @@ instance Semigroup SCPSec where
   S10 x <> S10 y = S10 (x <> y)
   S11 x <> S11 y = S10 (x <> y)
   Sv  x <> Sv  y = Sv  (x <> y)
-  x     <> y     = error $ "Concatenation of different types " ++ (show x) ++ " and " ++ (show y)
+  x     <> y     = error $ "Concatenation of different types "
+                         ++ (show x) ++ " and " ++ (show y)
 
-type SCPRecord = [(Word16, Either String SCPSec)]
+type SCPRecord = [Either String SCPSec]
 
 parseSCPsection :: Integer
                 -> Word16
@@ -83,10 +107,10 @@ parseSCPsection size id cont =
 -- Parse sections and return lazy list of sections
 parseSCPsecs :: Int64
              -> ByteString
-             -> [(Word16, Either String SCPSec)]
+             -> [Either String SCPSec]
 parseSCPsecs size cont
   | size == 0 = []
-  | size < 8  = [(999, Left ("short data " ++ (show size)))]
+  | size < 8  = [Left ("short data " ++ (show size))]
   | otherwise =
       let
         (expectedcrc, id, secsz) = runGet (isolate 8 parseSecHeader) cont
@@ -101,15 +125,15 @@ parseSCPsecs size cont
         realcrc = runGet getCRC rest_to_crc
       in
         case parseSCPsection (fromIntegral secsz) id seccont of
-          Left  err -> [(999, Left err)]  -- quit parsing
+          Left  err -> [Left err]  -- quit parsing
           Right res ->
             if realcrc == expectedcrc
               then
-                (id, Right res):(parseSCPsecs (size - secsz) rest)
+                (Right res):(parseSCPsecs (size - secsz) rest)
               else
-                [(999, Left $ "expected crc:" ++ (show expectedcrc)
-                              ++ " real crc:" ++ (show realcrc)
-                            ++ " in section " ++ (show id))]
+                [Left $ "expected crc:" ++ (show expectedcrc)
+                        ++ " real crc:" ++ (show realcrc)
+                      ++ " in section " ++ (show id)]
 
 getCRC :: Get Word16
 getCRC = getCRCb 0xffff
@@ -123,7 +147,7 @@ getCRC = getCRCb 0xffff
           let crc' = crc16Update 0x1021 False crc b
           getCRCb crc'
 
-parseSCP :: Maybe Integer -> ByteString -> [(Word16, Either String SCPSec)]
+parseSCP :: Maybe Integer -> ByteString -> [Either String SCPSec]
 parseSCP maybesize cont =
   let
     (crchdr, rest_to_crc) = splitAt 2 cont
@@ -136,24 +160,23 @@ parseSCP maybesize cont =
       then do
         if realcrc == expectedcrc
           then parseSCPsecs (expectedsize - 6) rest_to_parse
-          else [(999, Left $ "expected crc:" ++ (show expectedcrc)
-                             ++ " real crc:" ++ (show realcrc))]
+          else [Left $ "expected crc:" ++ (show expectedcrc)
+                       ++ " real crc:" ++ (show realcrc)]
       else
-        [(999, Left $ "expected size:" ++ (show expectedsize)
-                      ++ " real size:" ++ (show maybesize))]
+        [Left $ "expected size:" ++ (show expectedsize)
+                ++ " real size:" ++ (show maybesize)]
 
-mergeSCP :: [[(Word16, Either String SCPSec)]]
-         -> [(Word16, Either String SCPSec)]
+mergeSCP :: [[Either String SCPSec]]
+         -> [Either String SCPSec]
 mergeSCP ll =
   case fmap unzip $ sequenceA $ fmap uncons ll of
     -- pick head of each of the sublists:
     -- [[1,2,3],[4,5,6],[7,8,9]] -> Just ([1,4,7],[[2,3],[5,6],[8,9]])
     Nothing  -> []  -- at the end of at least one of the sublists
-    Just (cur, ll') -> (mergeSec (unzip cur)):(mergeSCP ll')
+    Just (cur, ll') -> (mergeSec cur):(mergeSCP ll')
     where
-      mergeSec :: ([Word16], [Either String SCPSec])
-               -> (Word16, Either String SCPSec)
-      mergeSec (ids, members)
-        | all (== head ids) (tail ids) =  -- all IDs are the same
-          (head ids, head members)  -- TODO: implement merge
-        | otherwise = (999, Left ("Secion ID mismatch: " ++ (show ids)))
+      mergeSec :: [Either String SCPSec] -> Either String SCPSec
+      mergeSec members
+        | all (=~ head members) (tail members) =  -- all IDs are the same
+          foldr1 (<>) members
+        | otherwise = Left ("Secion type mismatch")
