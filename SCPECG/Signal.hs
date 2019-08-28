@@ -41,3 +41,7 @@ instance SCPSection SCPSignal where
             word <- getInt16le
             dat' <- getDat
             return $ word:dat'
+
+instance Semigroup SCPSignal where
+  x <> y = x
+

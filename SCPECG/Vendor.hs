@@ -23,3 +23,6 @@ instance SCPSection SCPVendor where
   parseSection size id = do
     dat <- getLazyByteString (fromIntegral size)
     return $ Right $ SCPVendor size id dat
+
+instance Semigroup SCPVendor where
+  x <> y = x

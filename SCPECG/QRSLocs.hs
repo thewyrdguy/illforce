@@ -18,3 +18,6 @@ instance SCPSection SCPQRSLocs where
     skip 16
     rest <- getRemainingLazyByteString
     return $ Right $ SCPQRSLocs rest
+
+instance Semigroup SCPQRSLocs where
+  x <> y = x

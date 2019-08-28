@@ -58,3 +58,6 @@ instance SCPSection SCPMetadata where
                   return accum { scpMetaUndecoded =
                                  (id, len, dat):(scpMetaUndecoded accum)}
               getTags accum'
+
+instance Semigroup SCPMetadata where
+  x <> y = x

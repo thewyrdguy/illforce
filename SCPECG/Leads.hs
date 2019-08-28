@@ -39,3 +39,6 @@ instance SCPSection SCPLeads where
             lid <- getWord8
             dat' <- getList (n - 1)
             return $ (lid, beg, end):dat'
+
+instance Semigroup SCPLeads where
+  x <> y = x

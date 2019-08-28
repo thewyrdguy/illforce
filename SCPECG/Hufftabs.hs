@@ -35,3 +35,6 @@ instance SCPSection SCPHufftabs where
             byte <- getWord8
             dat' <- getDat
             return $ byte:dat'
+
+instance Semigroup SCPHufftabs where
+  x <> y = x

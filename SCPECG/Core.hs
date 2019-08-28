@@ -42,6 +42,22 @@ data SCPSec = S0  SCPPointer
             | Sv  SCPVendor
             deriving Show
 
+instance Semigroup SCPSec where
+  S0  x <> S0  y = S0  (x <> y)
+  S1  x <> S1  y = S1  (x <> y)
+  S2  x <> S2  y = S2  (x <> y)
+  S3  x <> S3  y = S3  (x <> y)
+  S4  x <> S4  y = S4  (x <> y)
+  S5  x <> S5  y = S5  (x <> y)
+  S6  x <> S6  y = S6  (x <> y)
+  S7  x <> S7  y = S7  (x <> y)
+  S8  x <> S8  y = S8  (x <> y)
+  S9  x <> S9  y = S9  (x <> y)
+  S10 x <> S10 y = S10 (x <> y)
+  S11 x <> S11 y = S10 (x <> y)
+  Sv  x <> Sv  y = Sv  (x <> y)
+  x     <> y     = error $ "Concatenation of different types " ++ (show x) ++ " and " ++ (show y)
+
 type SCPRecord = [(Word16, Either String SCPSec)]
 
 parseSCPsection :: Integer

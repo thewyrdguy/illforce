@@ -35,3 +35,6 @@ instance SCPSection SCPPointer where
                 off <- getWord32le
                 idx' <- getIdx
                 return $ (id, off, len):idx'
+
+instance Semigroup SCPPointer where
+  x <> y = x

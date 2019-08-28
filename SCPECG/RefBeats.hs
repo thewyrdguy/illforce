@@ -18,3 +18,6 @@ instance SCPSection SCPRefBeats where
     skip 16
     rest <- getRemainingLazyByteString
     return $ Right $ SCPRefBeats rest
+
+instance Semigroup SCPRefBeats where
+  x <> y = x
