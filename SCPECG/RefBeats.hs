@@ -19,5 +19,5 @@ instance SCPSection SCPRefBeats where
     rest <- getRemainingLazyByteString
     return $ Right $ SCPRefBeats rest
 
-instance Semigroup SCPRefBeats where
-  x <> y = x
+instance Mergeable SCPRefBeats where
+  maybeAppend x y = Right x

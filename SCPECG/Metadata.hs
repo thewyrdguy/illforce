@@ -59,5 +59,5 @@ instance SCPSection SCPMetadata where
                                  (id, len, dat):(scpMetaUndecoded accum)}
               getTags accum'
 
-instance Semigroup SCPMetadata where
-  x <> y = x
+instance Mergeable SCPMetadata where
+  maybeAppend x y = Right x

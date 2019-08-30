@@ -53,5 +53,5 @@ instance SCPSection SCPHufftabs where
         return $ SCPHuffCodeStruct bitsInPfx bitsInCode modeSwitch
                  baseValue baseCode
 
-instance Semigroup SCPHufftabs where
-  x <> y = x
+instance Mergeable SCPHufftabs where
+  maybeAppend x y = Right x

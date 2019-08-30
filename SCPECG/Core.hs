@@ -23,16 +23,12 @@ import SCPECG.Signal
 import SCPECG.Vendor
 import SCPECG.Types
 
-class SameShape a where
-  (=~) :: a -> a -> Bool
-
-instance SameShape (Either a b) where
-  Right _ =~ Right _ = True
-  _       =~ _       = False
-
 -- Stub for non-implemented section parsers:
 instance SCPSection () where
   parseSection size id = return $ Right ()
+
+instance Mergeable () where
+  maybeAppend () () = Right ()
 
 data SCPSec = S0  SCPPointer
             | S1  SCPMetadata
@@ -49,38 +45,22 @@ data SCPSec = S0  SCPPointer
             | Sv  SCPVendor
             deriving Show
 
-instance SameShape SCPSec where
-  (S0  _) =~ (S0  _) = True
-  (S1  _) =~ (S1  _) = True
-  (S2  _) =~ (S2  _) = True
-  (S3  _) =~ (S3  _) = True
-  (S4  _) =~ (S4  _) = True
-  (S5  _) =~ (S5  _) = True
-  (S6  _) =~ (S6  _) = True
-  (S7  _) =~ (S7  _) = True
-  (S8  _) =~ (S8  _) = True
-  (S9  _) =~ (S9  _) = True
-  (S10 _) =~ (S10 _) = True
-  (S11 _) =~ (S11 _) = True
-  (Sv  _) =~ (Sv  _) = True
-  _       =~ _       = False
-
-instance Semigroup SCPSec where
-  S0  x <> S0  y = S0  (x <> y)
-  S1  x <> S1  y = S1  (x <> y)
-  S2  x <> S2  y = S2  (x <> y)
-  S3  x <> S3  y = S3  (x <> y)
-  S4  x <> S4  y = S4  (x <> y)
-  S5  x <> S5  y = S5  (x <> y)
-  S6  x <> S6  y = S6  (x <> y)
-  S7  x <> S7  y = S7  (x <> y)
-  S8  x <> S8  y = S8  (x <> y)
-  S9  x <> S9  y = S9  (x <> y)
-  S10 x <> S10 y = S10 (x <> y)
-  S11 x <> S11 y = S10 (x <> y)
-  Sv  x <> Sv  y = Sv  (x <> y)
-  x     <> y     = error $ "Concatenation of different types "
-                         ++ (show x) ++ " and " ++ (show y)
+instance Mergeable SCPSec where
+  (S0  x) `maybeAppend` (S0  y) = fmap S0  (x `maybeAppend` y)
+  (S1  x) `maybeAppend` (S1  y) = fmap S1  (x `maybeAppend` y)
+  (S2  x) `maybeAppend` (S2  y) = fmap S2  (x `maybeAppend` y)
+  (S3  x) `maybeAppend` (S3  y) = fmap S3  (x `maybeAppend` y)
+  (S4  x) `maybeAppend` (S4  y) = fmap S4  (x `maybeAppend` y)
+  (S5  x) `maybeAppend` (S5  y) = fmap S5  (x `maybeAppend` y)
+  (S6  x) `maybeAppend` (S6  y) = fmap S6  (x `maybeAppend` y)
+  (S7  x) `maybeAppend` (S7  y) = fmap S7  (x `maybeAppend` y)
+  (S8  x) `maybeAppend` (S8  y) = fmap S8  (x `maybeAppend` y)
+  (S9  x) `maybeAppend` (S9  y) = fmap S9  (x `maybeAppend` y)
+  (S10 x) `maybeAppend` (S10 y) = fmap S10 (x `maybeAppend` y)
+  (S11 x) `maybeAppend` (S11 y) = fmap S10 (x `maybeAppend` y)
+  (Sv  x) `maybeAppend` (Sv  y) = fmap Sv  (x `maybeAppend` y)
+  x       `maybeAppend` y       = Left $ "Concatenation of different types "
+                                       ++ (show x) ++ " and " ++ (show y)
 
 type SCPRecord = [Either String SCPSec]
 
@@ -173,10 +153,9 @@ mergeSCP ll =
     -- pick head of each of the sublists:
     -- [[1,2,3],[4,5,6],[7,8,9]] -> Just ([1,4,7],[[2,3],[5,6],[8,9]])
     Nothing  -> []  -- at the end of at least one of the sublists
-    Just (cur, ll') -> (mergeSec cur):(mergeSCP ll')
+    Just (cur, ll') -> (foldr1 combine cur):(mergeSCP ll')
     where
-      mergeSec :: [Either String SCPSec] -> Either String SCPSec
-      mergeSec members
-        | all (=~ head members) (tail members) =  -- all IDs are the same
-          foldr1 (<>) members
-        | otherwise = Left ("Secion type mismatch")
+      combine (Left ex) (Left ey) = Left $ ex ++ "\n" ++ ey
+      combine (Left ex) (Right y) = Left ex
+      combine (Right x) (Left ey) = Left ey
+      combine (Right x) (Right y) = maybeAppend x y

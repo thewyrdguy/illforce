@@ -1,4 +1,4 @@
-module SCPECG.Signal (SCPSignal) where
+module SCPECG.Signal (SCPSignal(..)) where
 
 import Data.ByteString.Lazy (ByteString)
 import Data.Binary.Get ( Get, runGet, isEmpty, isolate, skip
@@ -13,7 +13,7 @@ data SCPSignal = SCPSignal { scpSignalnVper1 :: Word16
                            , scpSignaluSper1 :: Word16
                            , scpSignalEncType :: Word8
                            , scpSignalCprType :: Word8
-                           , scpSignalLeadl :: Word16
+                           , scpSignalLeadLen :: Word16
                            , scpSignalDataLen :: Int
                            , scpSignalData :: [Int16]
                            } deriving Show
@@ -42,6 +42,15 @@ instance SCPSection SCPSignal where
             dat' <- getDat
             return $ word:dat'
 
-instance Semigroup SCPSignal where
-  x <> y = x
-
+instance Mergeable SCPSignal where
+  maybeAppend x y
+    | (scpSignalnVper1 x)  /= (scpSignalnVper1 y)  = Left "Vper1 mismatch"
+    | (scpSignaluSper1 x)  /= (scpSignaluSper1 y)  = Left "Sper1 mismatch"
+    | (scpSignalEncType x) /= (scpSignalEncType y) = Left "EncType mismatch"
+    | (scpSignalCprType x) /= (scpSignalCprType y) = Left "CprType mismatch"
+    | (scpSignalLeadLen x) /= (scpSignalLeadLen y) = Left "Leadl mismatch"
+    | otherwise =
+        Right $ x { scpSignalLeadLen = (scpSignalLeadLen x + scpSignalLeadLen y)
+                  , scpSignalDataLen = (scpSignalDataLen x + scpSignalDataLen y)
+                  , scpSignalData = (scpSignalData x ++ scpSignalData y)
+                  }

@@ -19,5 +19,5 @@ instance SCPSection SCPQRSLocs where
     rest <- getRemainingLazyByteString
     return $ Right $ SCPQRSLocs rest
 
-instance Semigroup SCPQRSLocs where
-  x <> y = x
+instance Mergeable SCPQRSLocs where
+  maybeAppend x y = Right x
