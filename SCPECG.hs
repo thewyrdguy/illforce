@@ -1,4 +1,4 @@
-module SCPECG (parseSCPFiles, SCPRecord) where
+module SCPECG (parseSCPFiles, SCPRecord, SCPSec(..)) where
 
 import System.IO (IOMode(ReadMode), openBinaryFile, hSetBinaryMode
                  ,hIsSeekable, hFileSize, stdin)

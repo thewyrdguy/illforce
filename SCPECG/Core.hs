@@ -1,4 +1,4 @@
-module SCPECG.Core (SCPRecord, parseSCP, mergeSCP) where
+module SCPECG.Core (SCPRecord, parseSCP, mergeSCP, SCPSec(..)) where
 
 import Prelude hiding (splitAt)
 import Control.Applicative (liftA2)
