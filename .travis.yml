@@ -1,4 +1,0 @@
-language: haskell
-ghc:
-  - "8.4.4"
-cabal: "2.4.0"
