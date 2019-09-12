@@ -64,7 +64,7 @@ library
   build-depends:       base >=4.9 && <5.0
                      , bytestring >=0.10 && <1.0
                      , binary >=0.8 && <1.0
-                     , time >=1.8 && <2.0
+                     , time >=1.6 && <2.0
 
   -- Directories containing source files.
   -- hs-source-dirs:
@@ -87,7 +87,7 @@ executable scpecg
   build-depends:       base >=4.9 && <5.0
                      , bytestring >=0.10 && <1.0
                      , binary >=0.8 && <1.0
-                     , time >=1.8 && <2.0
+                     , time >=1.6 && <2.0
 
   -- Directories containing source files.
   -- hs-source-dirs:
