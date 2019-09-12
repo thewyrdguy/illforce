@@ -18,7 +18,7 @@ description:         Library to parse SCP-ECG format, and (in the future)
                      useful for files from Heal Force one-lead ECG recorders
 
 -- URL for the project homepage or repository.
-homepage:            https://bitbucket.org/thewyrdguy/illforce/
+homepage:            https://github.com/thewyrdguy/illforce/
 
 -- The license under which the package is released.
 license:             BSD3
@@ -61,7 +61,7 @@ library
   -- other-extensions:
 
   -- Other library packages from which modules are imported.
-  build-depends:       base >=4.11 && <5.0
+  build-depends:       base >=4.9 && <5.0
                      , bytestring >=0.10 && <1.0
                      , binary >=0.8 && <1.0
                      , time >=1.8 && <2.0
