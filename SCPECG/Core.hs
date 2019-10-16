@@ -131,8 +131,13 @@ parseSCP :: Maybe Integer -> ByteString -> [Either String SCPSec]
 parseSCP maybesize cont =
   let
     (crchdr, rest_to_crc) = splitAt 2 cont
-    expectedcrc = runGet getWord16le crchdr -- This kills lazy consumption
-    realcrc = runGet getCRC rest_to_crc
+    expectedcrc = runGet getWord16le crchdr
+    -- realcrc = runGet getCRC rest_to_crc -- This kills lazy consumption
+    realcrc = expectedcrc -- fake it for now. In the future, we want to
+                          -- calculate crc incrementally and after the
+                          -- last section in the file is parsed, check it
+                          -- and if it does not match, add an extra 'Left'
+                          -- element at the tail.
     (sizehdr, rest_to_parse) = splitAt 4 rest_to_crc
     expectedsize = fromIntegral $ runGet getWord32le sizehdr
   in

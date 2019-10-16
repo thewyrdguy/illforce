@@ -47,7 +47,6 @@ instance Mergeable SCPSignal where
     | (scpSignaluSper1 x)  /= (scpSignaluSper1 y)  = Left "Sper1 mismatch"
     | (scpSignalEncType x) /= (scpSignalEncType y) = Left "EncType mismatch"
     | (scpSignalCprType x) /= (scpSignalCprType y) = Left "CprType mismatch"
-    | (scpSignalLeadLen x) /= (scpSignalLeadLen y) = Left "Leadl mismatch"
     | otherwise =
         Right $ x { scpSignalLeadLen = (scpSignalLeadLen x + scpSignalLeadLen y)
                   , scpSignalDataLen = (scpSignalDataLen x + scpSignalDataLen y)
