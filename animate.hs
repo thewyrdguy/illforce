@@ -3,8 +3,8 @@ import Graphics.Gloss
 import Graphics.Gloss.Interface.IO.Animate
 main = do
   datap <- newIORef $ replicate 4000
-                         (0.0 :: Float, 0.0 :: Float, 0 :: Int, 0 :: Int)
-  animateFixedIO (InWindow "Signal" (1280, 720) (500, 500)) white
+                         (0.0 :: Float, 1.5 :: Float, 0 :: Int, 0 :: Int)
+  animateFixedIO FullScreen white
     (step datap) ctrl
 
 step :: IORef [(Float, Float, Int, Int)] -> Float -> IO Picture
