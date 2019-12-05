@@ -1,11 +1,18 @@
+import System.Environment
+import Data.List (find)
 import Data.IORef
 import Graphics.Gloss
 import Graphics.Gloss.Interface.IO.Animate
+
 main = do
+  args <- getArgs
+  let
+    screenmode = case find (== "-f") args of
+      Just _  -> FullScreen
+      Nothing -> InWindow "Signal" (1280, 720) (500, 500)
   datap <- newIORef $ replicate 4000
-                         (0.0 :: Float, 1.5 :: Float, 0 :: Int, 0 :: Int)
-  animateFixedIO FullScreen white
-    (step datap) ctrl
+                      (0.0 :: Float, 1.5 :: Float, 0 :: Int, 0 :: Int)
+  animateFixedIO screenmode white (step datap) ctrl
 
 step :: IORef [(Float, Float, Int, Int)] -> Float -> IO Picture
 step datap tm = do
