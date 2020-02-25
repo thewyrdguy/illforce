@@ -2,37 +2,43 @@ module ILLFORCE (listIllForceDir) where
 
 import Control.Monad (when)
 import Control.Monad.Trans.Except (ExceptT(ExceptT), runExceptT, throwE)
---import Control.Monad.Trans.Class (lift)
---import Control.Monad.IO.Class (liftIO)
 import Control.Exception (try)
 import System.IO (readFile)
-import System.IO.Error (IOError, mkIOError, userError)
+import System.IO.Error (IOError, userError)
 import System.FilePath (FilePath, (</>))
 import System.Directory (listDirectory, doesFileExist, doesDirectoryExist)
 import Text.ParserCombinators.ReadP (ReadP, readP_to_S, eof, satisfy,
                                      char, string, munch1, skipSpaces,
                                      many, many1, skipMany)
-import Data.Char (isDigit, isHexDigit)
 import Text.Read.Lex (readDecP, readHexP)
+import Data.Char (isDigit, isHexDigit)
+import Text.Printf (printf)
 
-listIllForceDir :: FilePath -> IO (Either IOError [FilePath])
+listIllForceDir :: FilePath -> IO (Either IOError [(Int, [FilePath])])
 listIllForceDir path = runExceptT $ do
   readme <- ExceptT $ try $ readFile (path </> "README.TXT")
+  let
+    readp2either [(x, "")] = Right x
+    readp2either [] = Left $ userError $ "Failed to parse README.TXT"
+    readp2either r  = Left $ userError $ "Inconclusive parse of README.TXT: "
+                                         ++ (show r)
   (f_per_d, ver_id, prod_id, total, groups)
-    <- ExceptT $ return $ pr2either $ readP_to_S parsereadme readme
-  return $ map show groups
-  where
-    pr2either [(x, "")] = Right x
-    pr2either [] = Left $ userError $ "Failed to parse README.TXT"
-    pr2either r  = Left $ userError $ "Inconclusive parse of README.TXT: "
-                                      ++ (show r)
-
-eol = do
-  skipMany (char ' ')
-  munch1 ((\x -> (x == '\n') || (x == '\r')))
-  return ()
+    <- ExceptT $ return $ readp2either $ readP_to_S parsereadme readme
+  when (total /= length groups) $ throwE $ userError $ "Wrong record number"
+  let
+ -- base [] = 0  -- Can never be called with empty list
+    base ((_, fm, _):xs) = fm
+    subidx n = (n - base groups) `div` f_per_d
+    mkpathlist (no, fm, to) = (no, map mkpath [fm .. to])
+    mkpath n = path </> "ECG_" ++ show (subidx n) </> show n ++ ".SCP"
+  return $ map mkpathlist groups
 
 parsereadme = do
+  let
+    eol = do
+      skipMany (char ' ')
+      munch1 ((\x -> (x == '\n') || (x == '\r')))
+      return ()
   string "Easy ECG Monitor"; eol
   string "Max SCP File Number in Dir:"; eol
   f_per_d <- readDecP; eol
