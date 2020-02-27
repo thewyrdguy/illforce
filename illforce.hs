@@ -1,10 +1,11 @@
 module Main where
 
+import System.Exit (exitWith, ExitCode(..))
+import System.Environment (getArgs, getProgName)
 import System.Console.GetOpt (getOpt, ArgOrder(Permute), usageInfo,
                               OptDescr(Option), ArgDescr(..))
+import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Except (ExceptT(ExceptT), runExceptT)
-import System.Environment (getArgs)
-import Text.Printf (printf)
 import SCPECG
 import SCPECG.Signal (SCPSignal(..))
 import ILLFORCE
@@ -36,7 +37,7 @@ options =
       "Output directory"
   ]
 
-parseargs argv =
+parseargs progname argv =
   case getOpt Permute options argv of
     (o,[p],[]  ) ->
       let
@@ -49,18 +50,22 @@ parseargs argv =
     (_, _ ,[]  ) -> Left $ userError ("Source dir not specified\n"
                                       ++ usageInfo header options)
     (_, _ ,errs) -> Left $ userError (concat errs ++ usageInfo header options)
-  where header = "Usage: [OPTION...] source-path"
+  where header = "Usage: " ++ progname ++ " [OPTION...] source-path"
 
 main = do
   result <- runExceptT go
   case result of
-    Left err -> print err
+    Left err -> print err >> exitWith (ExitFailure 1)
     Right _  -> return ()
   where
     go = do
-      args <- ExceptT $ fmap Right getArgs
-      opts <- ExceptT $ return $ parseargs args
-      dirrec <- ExceptT $ listIllForceDir (optPath opts)
-      let heads = map (\(n, xs) -> (n, head xs)) dirrec
-      ExceptT $ fmap Right $ mapM (putStrLn . show) heads
-      return ()
+      progname <- lift getProgName
+      args <- lift getArgs
+      opts <- ExceptT $ return $ parseargs progname args
+      drec <- ExceptT $ listIllForceDir (optPath opts)
+      case optOp opts of
+        OpList -> listrecs opts drec
+
+listrecs opts dirrec = do
+  let heads = map (\(n, xs) -> (n, head xs)) dirrec
+  lift $ mapM (putStrLn . show) heads
