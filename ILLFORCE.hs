@@ -12,7 +12,6 @@ import Text.ParserCombinators.ReadP (ReadP, readP_to_S, eof, satisfy,
                                      many, many1, skipMany)
 import Text.Read.Lex (readDecP, readHexP)
 import Data.Char (isDigit, isHexDigit)
-import Text.Printf (printf)
 
 listIllForceDir :: FilePath -> IO (Either IOError [(Int, [FilePath])])
 listIllForceDir path = runExceptT $ do
