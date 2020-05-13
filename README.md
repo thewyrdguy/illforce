@@ -1,5 +1,7 @@
 # SCP-ECG manipulation
 
+![CI](https://github.com/thewyrdguy/illforce/workflows/CI/badge.svg)
+
 A library (and in future, hopefully, command line utilities that use it)
 to parse SCP-ECG (EN1064:2005+A1:2007 or ISO 11073-91064:2009).
 
