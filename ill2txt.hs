@@ -1,3 +1,5 @@
+module Main where
+
 import System.Environment (getArgs)
 import Text.Printf (printf)
 import Data.List (find)
