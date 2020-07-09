@@ -52,19 +52,16 @@ parseargs progname argv =
     (_, _ ,errs) -> Left $ userError (concat errs ++ usageInfo header options)
   where header = "Usage: " ++ progname ++ " [OPTION...] source-path"
 
-main = do
-  result <- runExceptT go
-  case result of
-    Left err -> print err >> exitWith (ExitFailure 1)
-    Right _  -> return ()
-  where
-    go = do
-      progname <- lift getProgName
-      args <- lift getArgs
-      opts <- ExceptT $ return $ parseargs progname args
-      drec <- ExceptT $ listIllForceDir (optPath opts)
-      case optOp opts of
-        OpList -> listrecs opts drec
+main =
+  (runExceptT $ do
+    progname <- lift getProgName
+    args <- lift getArgs
+    opts <- ExceptT $ return $ parseargs progname args
+    drec <- ExceptT $ listIllForceDir (optPath opts)
+    case optOp opts of
+      OpList -> listrecs opts drec
+  ) >>= either (\err -> print err >> exitWith (ExitFailure 1))
+               (\_   -> return ())
 
 listrecs opts dirrec = do
   let heads = map (\(n, xs) -> (n, head xs)) dirrec
