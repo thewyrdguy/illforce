@@ -9,9 +9,10 @@ import System.FilePath (FilePath, (</>))
 import System.Directory (listDirectory, doesFileExist, doesDirectoryExist)
 import Text.ParserCombinators.ReadP (ReadP, readP_to_S, eof, satisfy,
                                      char, string, munch1, skipSpaces,
-                                     many, many1, skipMany)
+                                     many, many1, skipMany, sepBy1)
 import Text.Read.Lex (readDecP, readHexP)
 import Data.Char (isDigit, isHexDigit)
+import Data.List (intersperse)
 
 listIllForceDir :: FilePath -> IO (Either IOError [(Int, [FilePath])])
 listIllForceDir path = runExceptT $ do
@@ -38,11 +39,15 @@ parsereadme = do
       skipMany (char ' ')
       munch1 ((\x -> (x == '\n') || (x == '\r')))
       return ()
+    verstring = do
+      -- Two formats were observed: '5 6 3 0' and '5.6.0.0'
+      lst <- sepBy1 (satisfy isDigit) (satisfy (\x -> x == '.' || x == ' '))
+      return $ intersperse '.' lst
   string "Easy ECG Monitor"; eol
   string "Max SCP File Number in Dir:"; eol
   f_per_d <- readDecP; eol
   string "Version ID:"; eol
-  ver_id <- many1 (satisfy (\x -> isDigit x || x == '.')); eol
+  ver_id <- verstring; eol
   string "Product ID:"; eol
   prod_id <- many1 (satisfy isHexDigit); eol
   string "Total records:"; skipMany (char ' ')
