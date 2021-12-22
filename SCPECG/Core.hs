@@ -1,9 +1,10 @@
-module SCPECG.Core (SCPRecord, parseSCP, mergeSCP, SCPSec(..)) where
+module SCPECG.Core (parseSCP, mergeSCP, SCPRec(..), SCPSec(..)) where
 
 import Prelude hiding (splitAt)
 import Control.Applicative (liftA2)
 import Data.Maybe (fromMaybe)
 import Data.List (uncons)
+import Data.Foldable (foldl')
 import Data.ByteString.Lazy (ByteString, splitAt)
 import Data.Binary.Get ( Get, runGet, isolate, skip, lookAhead, isEmpty
                        , getWord8, getWord16le, getWord32le
@@ -27,9 +28,6 @@ import SCPECG.Types
 instance SCPSection () where
   parseSection size id = return $ Right ()
 
-instance Mergeable () where
-  maybeAppend () () = Right ()
-
 data SCPSec = S0  SCPPointer
             | S1  SCPMetadata
             | S2  SCPHufftabs
@@ -45,24 +43,37 @@ data SCPSec = S0  SCPPointer
             | Sv  SCPVendor
             deriving Show
 
-instance Mergeable SCPSec where
-  (S0  x) `maybeAppend` (S0  y) = fmap S0  (x `maybeAppend` y)
-  (S1  x) `maybeAppend` (S1  y) = fmap S1  (x `maybeAppend` y)
-  (S2  x) `maybeAppend` (S2  y) = fmap S2  (x `maybeAppend` y)
-  (S3  x) `maybeAppend` (S3  y) = fmap S3  (x `maybeAppend` y)
-  (S4  x) `maybeAppend` (S4  y) = fmap S4  (x `maybeAppend` y)
-  (S5  x) `maybeAppend` (S5  y) = fmap S5  (x `maybeAppend` y)
-  (S6  x) `maybeAppend` (S6  y) = fmap S6  (x `maybeAppend` y)
-  (S7  x) `maybeAppend` (S7  y) = fmap S7  (x `maybeAppend` y)
-  (S8  x) `maybeAppend` (S8  y) = fmap S8  (x `maybeAppend` y)
-  (S9  x) `maybeAppend` (S9  y) = fmap S9  (x `maybeAppend` y)
-  (S10 x) `maybeAppend` (S10 y) = fmap S10 (x `maybeAppend` y)
-  (S11 x) `maybeAppend` (S11 y) = fmap S10 (x `maybeAppend` y)
-  (Sv  x) `maybeAppend` (Sv  y) = fmap Sv  (x `maybeAppend` y)
-  x       `maybeAppend` y       = Left $ "Concatenation of different types "
-                                       ++ (show x) ++ " and " ++ (show y)
+data SCPRec = SCPRec { s0  :: Maybe SCPPointer
+                     , s1  :: Maybe SCPMetadata
+                     , s2  :: Maybe SCPHufftabs
+                     , s3  :: Maybe SCPLeads
+                     , s4  :: Maybe SCPQRSLocs
+                     , s5  :: Maybe SCPRefBeats
+                     , s6  :: Maybe SCPSignal
+                     , s7  :: Maybe ()
+                     , s8  :: Maybe ()
+                     , s9  :: Maybe ()
+                     , s10 :: Maybe ()
+                     , s11 :: Maybe ()
+                     , sv  :: Maybe SCPVendor
+                     } deriving Show
+nullSCPRec = SCPRec Nothing Nothing Nothing Nothing Nothing Nothing Nothing
+                    Nothing Nothing Nothing Nothing Nothing Nothing
 
-type SCPRecord = [Either String SCPSec]
+secToRec :: SCPRec -> SCPSec -> SCPRec
+secToRec rec (S0   x) = rec { s0  = (s0  rec) <> (Just x)}
+secToRec rec (S1   x) = rec { s1  = (s1  rec) <> (Just x)}
+secToRec rec (S2   x) = rec { s2  = (s2  rec) <> (Just x)}
+secToRec rec (S3   x) = rec { s3  = (s3  rec) <> (Just x)}
+secToRec rec (S4   x) = rec { s4  = (s4  rec) <> (Just x)}
+secToRec rec (S5   x) = rec { s5  = (s5  rec) <> (Just x)}
+secToRec rec (S6   x) = rec { s6  = (s6  rec) <> (Just x)}
+secToRec rec (S7   x) = rec { s7  = (s7  rec) <> (Just x)}
+secToRec rec (S8   x) = rec { s8  = (s8  rec) <> (Just x)}
+secToRec rec (S9   x) = rec { s9  = (s9  rec) <> (Just x)}
+secToRec rec (S10  x) = rec { s10 = (s10 rec) <> (Just x)}
+secToRec rec (S11  x) = rec { s11 = (s11 rec) <> (Just x)}
+secToRec rec (Sv   x) = rec { sv  = (sv  rec) <> (Just x)}
 
 parseSCPsection :: Integer
                 -> Word16
@@ -151,16 +162,10 @@ parseSCP maybesize cont =
         [Left $ "expected size:" ++ (show expectedsize)
                 ++ " real size:" ++ (show maybesize)]
 
-mergeSCP :: [[Either String SCPSec]]
-         -> [Either String SCPSec]
-mergeSCP ll =
-  case fmap unzip $ sequenceA $ fmap uncons ll of
-    -- pick head of each of the sublists:
-    -- [[1,2,3],[4,5,6],[7,8,9]] -> Just ([1,4,7],[[2,3],[5,6],[8,9]])
-    Nothing  -> []  -- at the end of at least one of the sublists
-    Just (cur, ll') -> (foldr1 combine cur):(mergeSCP ll')
-    where
-      combine (Left ex) (Left ey) = Left $ ex ++ "\n" ++ ey
-      combine (Left ex) (Right y) = Left ex
-      combine (Right x) (Left ey) = Left ey
-      combine (Right x) (Right y) = maybeAppend x y
+invert :: [[a]] -> [[a]]
+invert ll = case fmap unzip . sequenceA . fmap uncons $ ll of
+  Just (x, xs) -> x:invert xs
+  Nothing -> []
+
+mergeSCP :: [[Either String SCPSec]] -> Either String SCPRec
+mergeSCP = foldl' (liftA2 secToRec) (Right nullSCPRec) . concat . invert

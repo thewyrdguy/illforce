@@ -36,5 +36,5 @@ instance SCPSection SCPPointer where
                 idx' <- getIdx
                 return $ (id, off, len):idx'
 
-instance Mergeable SCPPointer where
-  maybeAppend x y = Right x
+instance Semigroup SCPPointer where
+  x <> y = x

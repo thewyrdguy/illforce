@@ -24,5 +24,5 @@ instance SCPSection SCPVendor where
     dat <- getLazyByteString (fromIntegral size)
     return $ Right $ SCPVendor size id dat
 
-instance Mergeable SCPVendor where
-  maybeAppend x y = Right x
+instance Semigroup SCPVendor where
+  x <> y = x

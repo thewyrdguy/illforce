@@ -40,5 +40,5 @@ instance SCPSection SCPLeads where
             dat' <- getList (n - 1)
             return $ (lid, beg, end):dat'
 
-instance Mergeable SCPLeads where
-  maybeAppend x y = Right x
+instance Semigroup SCPLeads where
+  x <> y = x

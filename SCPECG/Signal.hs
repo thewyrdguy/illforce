@@ -41,14 +41,14 @@ instance SCPSection SCPSignal where
             dat' <- getDat
             return $ word:dat'
 
-instance Mergeable SCPSignal where
-  maybeAppend x y
-    | (scpSignalnVper1 x)  /= (scpSignalnVper1 y)  = Left "Vper1 mismatch"
-    | (scpSignaluSper1 x)  /= (scpSignaluSper1 y)  = Left "Sper1 mismatch"
-    | (scpSignalEncType x) /= (scpSignalEncType y) = Left "EncType mismatch"
-    | (scpSignalCprType x) /= (scpSignalCprType y) = Left "CprType mismatch"
+instance Semigroup SCPSignal where
+  x <> y
+    | (scpSignalnVper1 x)  /= (scpSignalnVper1 y)  = error "Vper1 mismatch"
+    | (scpSignaluSper1 x)  /= (scpSignaluSper1 y)  = error "Sper1 mismatch"
+    | (scpSignalEncType x) /= (scpSignalEncType y) = error "EncType mismatch"
+    | (scpSignalCprType x) /= (scpSignalCprType y) = error "CprType mismatch"
     | otherwise =
-        Right $ x { scpSignalLeadLen = (scpSignalLeadLen x + scpSignalLeadLen y)
-                  , scpSignalDataLen = (scpSignalDataLen x + scpSignalDataLen y)
-                  , scpSignalData = (scpSignalData x ++ scpSignalData y)
-                  }
+        x { scpSignalLeadLen = (scpSignalLeadLen x + scpSignalLeadLen y)
+          , scpSignalDataLen = (scpSignalDataLen x + scpSignalDataLen y)
+          , scpSignalData = (scpSignalData x ++ scpSignalData y)
+          }

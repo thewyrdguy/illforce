@@ -10,8 +10,10 @@ import Text.Printf (printf)
 import Data.List (find)
 import Data.Word (Word16)
 import Data.Bits ((.&.), testBit)
+import Data.Maybe (fromMaybe)
 import Control.Monad.Trans.Class (lift)
-import Control.Monad.Trans.Except (ExceptT(ExceptT), runExceptT)
+import Control.Monad.Trans.Except (ExceptT(ExceptT), runExceptT, withExceptT)
+import Control.Monad.Except (liftEither)
 import Control.Exception (try)
 import SCPECG
 import SCPECG.Signal (SCPSignal(..))
@@ -85,14 +87,11 @@ outtexts opts dirrec = mapM (outtext opts) dirrec
   where
   outtext opts (n, paths) = do
     let outname = (optOut opts) </> (show n) ++ ".txt"
-    record <- ExceptT $ try $ parseSCPFiles paths
-    signal <- ExceptT $ return $ findsignal record
+    record <- ExceptT $ parseSCPFiles paths
+    signal <- liftEither $
+      fromMaybe (Left (userError "Signal section not found"))
+                (fmap Right (s6 record))
     ExceptT $ try $ writeFile outname (unlines (formattext signal))
-  findsignal []                  = Left $ userError "Section 6 is absent"
-
-  findsignal ((Right (S6 s)):xs) = Right s
-  findsignal ((Right _):xs)      = findsignal xs
-  findsignal ((Left er):xs)      = Left $ userError er
 
   formattext signal = map formatentry (normalize signal)
   normalize signal = map (normentry (scpSignaluSper1 signal)
