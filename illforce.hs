@@ -17,6 +17,7 @@ import Control.Monad.Trans.Except ( except, ExceptT(ExceptT), runExceptT
 import Control.Exception (try)
 import SCPECG
 import SCPECG.Signal (SCPSignal(..))
+import SCPECG.Metadata (SCPMetadata(..))
 import ILLFORCE
 
 data Operation = OpUnspec
@@ -79,9 +80,19 @@ main =
   ) >>= either (\err -> print err >> exitWith (ExitFailure 1))
                (\_   -> return ())
 
-listrecs opts dirrec = do
-  let heads = map (\(n, xs) -> (n, head xs)) dirrec
-  lift $ mapM (putStrLn . show) heads
+listrecs opts dirrec = mapM showEntry $ map (fmap head) dirrec
+  where
+  showEntry (n, path) = do
+    record <- ExceptT $ parseSCPFiles [path]
+    metadt <- except $
+      fromMaybe (Left (userError "Metadata section not found"))
+                (fmap Right (s1 record))
+    ExceptT $ try $ printDateTime n metadt
+  printDateTime n metadt =
+    printf "%3d %8s %8s\n" n (showDay metadt) (showTime metadt)
+      where
+      showDay metadt = fromMaybe "--" $ fmap show (scpMetaDay metadt)
+      showTime metadt = fromMaybe "--" $ fmap show (scpMetaTime metadt)
 
 outtexts opts dirrec = mapM (outtext opts) dirrec
   where

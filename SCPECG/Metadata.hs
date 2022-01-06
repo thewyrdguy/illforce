@@ -1,4 +1,4 @@
-module SCPECG.Metadata (SCPMetadata) where
+module SCPECG.Metadata (SCPMetadata(..)) where
 
 import Data.ByteString (ByteString)
 import Data.ByteString.Char8 (unpack)
