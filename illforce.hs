@@ -12,8 +12,8 @@ import Data.Word (Word16)
 import Data.Bits ((.&.), testBit)
 import Data.Maybe (fromMaybe)
 import Control.Monad.Trans.Class (lift)
-import Control.Monad.Trans.Except (ExceptT(ExceptT), runExceptT, withExceptT)
-import Control.Monad.Except (liftEither)
+import Control.Monad.Trans.Except ( except, ExceptT(ExceptT), runExceptT
+                                  , withExceptT)
 import Control.Exception (try)
 import SCPECG
 import SCPECG.Signal (SCPSignal(..))
@@ -88,7 +88,7 @@ outtexts opts dirrec = mapM (outtext opts) dirrec
   outtext opts (n, paths) = do
     let outname = (optOut opts) </> (show n) ++ ".txt"
     record <- ExceptT $ parseSCPFiles paths
-    signal <- liftEither $
+    signal <- except $
       fromMaybe (Left (userError "Signal section not found"))
                 (fmap Right (s6 record))
     ExceptT $ try $ writeFile outname (unlines (formattext signal))

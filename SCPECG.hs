@@ -1,7 +1,7 @@
 module SCPECG (parseSCPFiles, SCPRec(..), SCPSec(..)) where
 
 import Control.Exception (try)
-import Control.Monad.Except (ExceptT(ExceptT), runExceptT, withExceptT)
+import Control.Monad.Trans.Except (ExceptT(ExceptT), runExceptT, withExceptT)
 import Control.Monad.Trans.Class (lift)
 import System.IO (IOMode(ReadMode), openBinaryFile, hSetBinaryMode
                  ,hIsSeekable, hFileSize, stdin)
