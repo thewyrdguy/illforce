@@ -64,7 +64,9 @@ library
   build-depends:       base >=4.9 && <5.0
                      , bytestring >=0.10 && <1.0
                      , binary >=0.8 && <1.0
+                     , mtl >= 2.0 && < 3.0
                      , time >=1.6 && <2.0
+                     , transformers >= 0.5 && <1.0
 
   -- Directories containing source files.
   -- hs-source-dirs:
@@ -73,12 +75,24 @@ library
   default-language:    Haskell2010
 
 
-executable scpprint
+executable illforce
   -- .hs or .lhs file containing the Main module.
-  main-is:             scpprint.hs
+  main-is:             illforce.hs
 
   -- Modules included in this executable, other than Main.
-  -- other-modules:
+  other-modules: ILLFORCE
+               , Data.Digest.CRC
+               , SCPECG
+               , SCPECG.Core
+               , SCPECG.Hufftabs
+               , SCPECG.Leads
+               , SCPECG.Metadata
+               , SCPECG.Pointer
+               , SCPECG.QRSLocs
+               , SCPECG.RefBeats
+               , SCPECG.Signal
+               , SCPECG.Types
+               , SCPECG.Vendor
 
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:
@@ -87,7 +101,11 @@ executable scpprint
   build-depends:       base >=4.9 && <5.0
                      , bytestring >=0.10 && <1.0
                      , binary >=0.8 && <1.0
+                     , filepath >=1.0 && <2.0
+                     , directory >=1.0 && <2.0
+                     , mtl >= 2.0 && < 3.0
                      , time >=1.6 && <2.0
+                     , transformers >= 0.5 && <1.0
 
   -- Directories containing source files.
   -- hs-source-dirs:
