@@ -1,0 +1,15 @@
+#!/bin/sh
+
+recpid=$1
+file="$2"
+
+echo "preparing to play"
+sleep 1
+echo "starting to play"
+`dirname $0`/animate -f "$file"
+echo "finished playing"
+sleep 1
+echo "killing `cat $recpid`"
+kill -INT `cat $recpid`
+sleep 1
+echo "returning from play"
