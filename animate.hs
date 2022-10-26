@@ -1,9 +1,14 @@
 module Main where
 
+-- to run inside ghci:
+-- LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libglut.so.3 ghci ...
+
 import System.Console.GetOpt
 import System.Environment
 import System.IO
 import System.FilePath
+import Control.Monad
+import Data.Maybe
 import Data.List (find)
 import Data.IORef
 import Graphics.Gloss
@@ -11,8 +16,8 @@ import Graphics.Gloss.Interface.IO.Animate
 
 data Options = Options { optVerbose :: Bool
                        , optFullscr :: Bool
-                       , optBegin   :: Maybe Int
-                       , optEnd     :: Maybe Int
+                       , optBegin   :: Maybe Float
+                       , optEnd     :: Maybe Float
                        , optPath    :: Maybe FilePath
                        } deriving Show
 defaultOptions = Options { optVerbose = False
@@ -57,13 +62,21 @@ main = do
           Just p  -> openFile p ReadMode
           Nothing -> return stdin
   datap <- newIORef $ replicate 4000
-                      (0.0 :: Float, 1.5 :: Float, 0 :: Int, 0 :: Int)
-  animateFixedIO screenmode black (step datap fh) ctrl
+                      (0.0 :: Float, 1.65 :: Float, 0 :: Int, 0 :: Int)
+  let beg = fromMaybe 0.0 (optBegin opts)
+  consume beg fh
+  animateFixedIO screenmode black (step beg datap fh) ctrl
 
-step :: IORef [(Float, Float, Int, Int)] -> Handle -> Float -> IO Picture
-step datap fh tm = do
+consume :: Float -> Handle -> IO ()
+consume beg fh = do
+  (x, _, _, _) <- fmap parseline $ hGetLine fh
+  when (x < beg) $ consume beg fh
+  return ()
+
+step :: Float -> IORef [(Float, Float, Int, Int)] -> Handle -> Float -> IO Picture
+step beg datap fh tm = do
   indata <- readIORef datap
-  newdata <- advance indata fh tm
+  newdata <- advance indata fh (tm + beg)
   writeIORef datap newdata
   return $ picture newdata
 
@@ -74,19 +87,21 @@ advance :: [(Float, Float, Int, Int)]
 advance indata fh atm
   | atm < (let (x, _, _, _) = (head indata) in x) = return indata
   | otherwise = do
-    new <- fmap ((\[s0, s1, s2, s3] ->
+    new <- fmap parseline $ hGetLine fh
+    advance (take 4000 (new:indata)) fh atm
+
+parseline = (\[s0, s1, s2, s3] ->
                    ( read s0 :: Float
                    , read s1 :: Float
                    , read s2 :: Int
-                   , read s3 :: Int)) . words) $ hGetLine fh
-    advance (take 4000 (new:indata)) fh atm
+                   , read s3 :: Int)) . words
 
 picture indata =
-  Color green $ translate (600) (-350) $ line (map fit (zip [0..] indata))
+  Color green $ translate 600 0 $ line (map fit (zip [0..] indata))
   where
     fit :: (Int, (Float, Float, Int, Int)) -> (Float, Float)
     fit (num, (ts, mV, qrs, ano)) =
-      ((fromIntegral num) * (-10280.0) / 4000.0, mV * 720.0 / 3.0)
+      ((fromIntegral num) * (-10280.0) / 4000.0, (mV - 1.65) * 450.0)
       
 
 ctrl :: Controller -> IO ()
