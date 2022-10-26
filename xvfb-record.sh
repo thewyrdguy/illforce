@@ -1,6 +1,6 @@
 #!/bin/sh
 
-file="$1"
+for file; do :; done  # file is the last argument
 srv=44
 recpid="/tmp/recpid"
 
@@ -8,7 +8,7 @@ bindir="`dirname $0`"
 
 echo about to start xvfb-run
 xvfb-run --server-num $srv --auth-file /tmp/xvfb.auth \
-	-s "-ac -screen 0 1280x720x24" $bindir/playanimation $recpid "$file" &
+	-s "-ac -screen 0 1280x720x24" $bindir/playanimation $recpid $* &
 playpid=$!
 echo started xvfb-run, pid $playpid
 
@@ -23,7 +23,7 @@ echo started recording, pid `cat $recpid`
 #	-codec:v libx264 -r 29.97 "$dst"
 #	-codec:v mpeg1video
 
-echo waiting for record to complete (pid `cat $recpid`)
+echo waiting for record to complete - pid `cat $recpid`
 wait `cat $recpid`
 echo record completed, waiting for play to complete (pid $playpid)
 wait $playpid

@@ -7,6 +7,7 @@ import System.Console.GetOpt
 import System.Environment
 import System.IO
 import System.FilePath
+import System.Exit
 import Control.Monad
 import Data.Maybe
 import Data.List (find)
@@ -64,8 +65,9 @@ main = do
   datap <- newIORef $ replicate 4000
                       (0.0 :: Float, 1.65 :: Float, 0 :: Int, 0 :: Int)
   let beg = fromMaybe 0.0 (optBegin opts)
+  let end = optEnd opts
   consume beg fh
-  animateFixedIO screenmode black (step beg datap fh) ctrl
+  animateFixedIO screenmode black (step beg end datap fh) ctrl
 
 consume :: Float -> Handle -> IO ()
 consume beg fh = do
@@ -73,8 +75,9 @@ consume beg fh = do
   when (x < beg) $ consume beg fh
   return ()
 
-step :: Float -> IORef [(Float, Float, Int, Int)] -> Handle -> Float -> IO Picture
-step beg datap fh tm = do
+step :: Float -> Maybe Float -> IORef [(Float, Float, Int, Int)] -> Handle -> Float -> IO Picture
+step beg end datap fh tm = do
+  when (fromMaybe False (fmap (< tm) end)) $ exitSuccess
   indata <- readIORef datap
   newdata <- advance indata fh (tm + beg)
   writeIORef datap newdata
