@@ -108,8 +108,17 @@ parseline = (\[s0, s1, s2, s3] ->
                    , read s2 :: Int
                    , read s3 :: Int)) . words
 
-picture tm indata = {- translate 600 0 $ -} pictures [curve]
+picture tm indata = xgrid2 off <> ygrid2 <> xgrid1 off <> ygrid1 <> curve
   where
+    off = tm - fromIntegral (round (tm * 5.0)) / 5.0
+    ygrid1 = color (greyN 0.5) $ pictures
+      [line [(-640.0, y * 115.0),(640.0, y * 115.0)] | y <- [-3.0,-2.5..3.0]]
+    ygrid2 = color (greyN 0.2) $ pictures
+      [line [(-640.0, y * 115.0),(640.0, y * 115.0)] | y <- [-3.0,-2.90..3.0]]
+    xgrid1 off = color (greyN 0.5) $ pictures
+      [line [((x - off) * 256, -360.0),((x - off) * 256, 360.0)] | x <- [-2.5,-2.3..2.5]]
+    xgrid2 off = color (greyN 0.2) $ pictures
+      [line [((x - off) * 256.0, -360.0),((x - off) * 256.0, 360.0)] | x <- [-2.5,-2.46..2.5]]
     curve = color (bright green) $ line (map fit indata)
     fit :: (Float, Float, Int, Int) -> (Float, Float)
     fit (ts, mV, qrs, ano) =
