@@ -25,6 +25,6 @@ echo started recording, pid `cat $recpid`
 
 echo waiting for record to complete - pid `cat $recpid`
 wait `cat $recpid`
-echo record completed, waiting for play to complete (pid $playpid)
+echo record completed, waiting for play to complete - pid $playpid
 wait $playpid
 echo play completed

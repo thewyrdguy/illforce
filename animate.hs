@@ -7,7 +7,7 @@ import System.Console.GetOpt
 import System.Environment
 import System.IO
 import System.FilePath
-import System.Exit
+import Control.Exception
 import Control.Monad
 import Data.Maybe
 import Data.List (find)
@@ -51,6 +51,9 @@ parseargs progname argv =
     (_,_,errs) -> ioError (userError (concat errs ++ usageInfo header options))
   where header = "Usage: " ++ progname ++ " [OPTION...] source-path"
 
+data FinishException = Finish deriving Show
+instance Exception FinishException
+
 main = do
   progname <- getProgName
   args <- getArgs
@@ -67,7 +70,10 @@ main = do
   let beg = fromMaybe 0.0 (optBegin opts)
   let end = optEnd opts
   consume beg fh
-  animateFixedIO screenmode black (step beg end datap fh) ctrl
+  -- For whatever reason, catching exception does not work.
+  catch (animateFixedIO screenmode black (step beg end datap fh) ctrl)
+        (\e -> putStrLn $ "caught exception" ++ (show (e :: FinishException)))
+  putStrLn $ "After animation"
 
 consume :: Float -> Handle -> IO ()
 consume beg fh = do
@@ -77,11 +83,11 @@ consume beg fh = do
 
 step :: Float -> Maybe Float -> IORef [(Float, Float, Int, Int)] -> Handle -> Float -> IO Picture
 step beg end datap fh tm = do
-  when (fromMaybe False (fmap (< tm) end)) $ exitSuccess
+  when (fromMaybe False (fmap (< tm) end)) $ throwIO Finish
   indata <- readIORef datap
   newdata <- advance indata fh (tm + beg)
   writeIORef datap newdata
-  return $ picture newdata
+  return $ picture tm newdata
 
 advance :: [(Float, Float, Int, Int)]
         -> Handle
@@ -99,7 +105,7 @@ parseline = (\[s0, s1, s2, s3] ->
                    , read s2 :: Int
                    , read s3 :: Int)) . words
 
-picture indata =
+picture tm indata =
   Color green $ translate 600 0 $ line (map fit (zip [0..] indata))
   where
     fit :: (Int, (Float, Float, Int, Int)) -> (Float, Float)
