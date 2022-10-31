@@ -65,10 +65,13 @@ main = do
   fh <- case optPath opts of
           Just p  -> openFile p ReadMode
           Nothing -> return stdin
-  datap <- newIORef $ replicate 4000
-                      (0.0 :: Float, 1.65 :: Float, 0 :: Int, 0 :: Int)
   let beg = fromMaybe 0.0 (optBegin opts)
   let end = optEnd opts
+  datap <- newIORef [( (fromIntegral i) * (-0.006667) + beg :: Float
+                       , 1.65 :: Float
+                       , 0 :: Int
+                       , 0 :: Int
+                       ) | i <- [1..4000]]
   consume beg fh
   -- For whatever reason, catching exception does not work.
   catch (animateFixedIO screenmode black (step beg end datap fh) ctrl)
@@ -87,7 +90,7 @@ step beg end datap fh tm = do
   indata <- readIORef datap
   newdata <- advance indata fh (tm + beg)
   writeIORef datap newdata
-  return $ picture tm newdata
+  return $ picture (beg + tm) newdata
 
 advance :: [(Float, Float, Int, Int)]
         -> Handle
@@ -105,12 +108,12 @@ parseline = (\[s0, s1, s2, s3] ->
                    , read s2 :: Int
                    , read s3 :: Int)) . words
 
-picture tm indata =
-  Color green $ translate 600 0 $ line (map fit (zip [0..] indata))
+picture tm indata = {- translate 600 0 $ -} pictures [curve]
   where
-    fit :: (Int, (Float, Float, Int, Int)) -> (Float, Float)
-    fit (num, (ts, mV, qrs, ano)) =
-      ((fromIntegral num) * (-10280.0) / 4000.0, (mV - 1.65) * 450.0)
+    curve = color (bright green) $ line (map fit indata)
+    fit :: (Float, Float, Int, Int) -> (Float, Float)
+    fit (ts, mV, qrs, ano) =
+      ((ts - tm) * (1280.0) / 5.0 + 640, (mV - 1.65) * 450.0)
       
 
 ctrl :: Controller -> IO ()
