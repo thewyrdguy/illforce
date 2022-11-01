@@ -126,10 +126,13 @@ grid = color (greyN 0.2) (pictures
 label x y str = translate x y $ scale 0.1 0.1 $ text str
 
 xlabels tm = color white (pictures
-         [label (x * 256) (-355) (printf "%3.1f" (x + tm))
+         [label (x * 256) (-355) (printf "%3.1f" (x + mark))
           | x <- [-2.5,-2.3..2.5]])
+  where
+    mark = fromIntegral (round (tm * 5.0)) / 5.0
 
-picture tm indata = translate off 0 (grid <> xlabels tm) <> curve
+picture tm indata = translate (off * (-256)) 0 (grid <> xlabels (tm - 2.6))
+                 <> curve
   where
     off = tm - fromIntegral (round (tm * 5.0)) / 5.0
     curve = color (bright green) $ line (map fit indata)
