@@ -12,7 +12,7 @@ xvfb-run --server-num $srv --auth-file /tmp/xvfb.auth \
 playpid=$!
 echo started xvfb-run, pid $playpid
 
-dst=`echo $file|sed -e 's/\.txt//'`.avi
+dst=`echo $file|sed -e 's/\.txt//'`.mp4
 rm -f "$dst"
 echo starting record into "$dst"
 ffmpeg -draw_mouse 0 -f x11grab -video_size 1280x720 -i :$srv \
