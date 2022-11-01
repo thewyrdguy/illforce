@@ -7,6 +7,7 @@ import System.Console.GetOpt
 import System.Environment
 import System.IO
 import System.FilePath
+import Text.Printf
 import Control.Exception
 import Control.Monad
 import Data.Maybe
@@ -122,7 +123,13 @@ grid = color (greyN 0.2) (pictures
           | y <- [-3.0,-2.5..3.0]])
 
 
-picture tm indata = translate off 0 grid <> curve
+label x y str = translate x y $ scale 0.1 0.1 $ text str
+
+xlabels tm = color white (pictures
+         [label (x * 256) (-355) (printf "%3.1f" (x + tm))
+          | x <- [-2.5,-2.3..2.5]])
+
+picture tm indata = translate off 0 (grid <> xlabels tm) <> curve
   where
     off = tm - fromIntegral (round (tm * 5.0)) / 5.0
     curve = color (bright green) $ line (map fit indata)
