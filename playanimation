@@ -6,7 +6,7 @@ shift
 echo "preparing to play, args $*"
 sleep 1
 echo "starting to play"
-`dirname $0`/animate $*
+`dirname $0`/playecg $*
 echo "finished playing"
 sleep 1
 echo "killing `cat $recpid`"
