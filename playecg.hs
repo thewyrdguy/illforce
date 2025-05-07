@@ -7,6 +7,7 @@ import Control.Exception
 import Control.Monad
 import Data.Maybe
 import Data.List (find)
+import Data.List.Split (splitOn)
 import Data.IORef
 import Graphics.Gloss
 import Graphics.Gloss.Interface.IO.Animate
@@ -22,6 +23,7 @@ data Options = Options { optVerbose :: Bool
                        , optBegin   :: Maybe Float
                        , optEnd     :: Maybe Float
                        , optPath    :: Maybe FilePath
+                       , optRes     :: String
                        } deriving Show
 defaultOptions = Options { optVerbose = False
                          , optFullscr = False
@@ -29,6 +31,7 @@ defaultOptions = Options { optVerbose = False
                          , optBegin   = Nothing
                          , optEnd     = Nothing
                          , optPath    = Nothing
+                         , optRes     = "1280x720"
                          }
 
 options :: [OptDescr (Options -> Options)]
@@ -48,6 +51,9 @@ options =
   , Option ['e'] ["end"]
       (ReqArg (\x opts -> opts { optEnd = Just (read x) }) "end")
       "End second (default till the end of file)"
+  , Option ['r'] ["resolution"]
+      (ReqArg (\x opts -> opts { optRes = x }) "resolution")
+      "Resolution of the rendered video NNNxMMM (xres 'x' yres)"
   ]
 
 parseargs progname argv =
@@ -65,9 +71,10 @@ main = do
   args <- getArgs
   opts <- parseargs progname args
   let
+    [xres :: Int, yres :: Int] = map read $ splitOn "x" (optRes opts)
     screenmode = if optFullscr opts
                    then FullScreen
-                   else InWindow "Signal" (1280, 720) (500, 500)
+                   else InWindow "Signal" (xres, yres) (500, 500)
     beg = fromMaybe 0.0 (optBegin opts)
     end = optEnd opts
     picfun = if optCrt opts then crtPic else streamPic
@@ -149,8 +156,8 @@ streamPic tm indata = translate (off * (-256)) 0 (grid <> xlabels (tm - 2.5))
     off = tm - mark
     curve = color (bright green) $ line (map (fit tm) indata)
     xlabels tm = color white (pictures
-             [label (x * 256) (-355) (printf "%3.1f" (x + mark - 2.5))
-              | x <- [-2.5,-2.3..2.5]])
+             [label (x * 256) (-355) (printf "%4.1f" (x + mark - 2.5))
+              | x <- [-2.5,-2.0..2.5]])
 
 
 crtPic tm indata = grid <> xlabels base <> curve
@@ -162,8 +169,8 @@ crtPic tm indata = grid <> xlabels base <> curve
     curve = color (bright green) (line (map (fit (5.0 + base)) newdata))
          <> color (dim green) (line (map (fit (0.0 + base)) olddata))
     xlabels tm = color white (pictures
-             [label (x * 256) (-355) (printf "%3.1f" (x + base + 2.5))
-              | x <- [-2.5,-2.3..2.5]])
+             [label (x * 256) (-355) (printf "%4.1f" (x + base + 2.5))
+              | x <- [-2.5,-2.0..2.5]])
 
 ctrl :: Controller -> IO ()
 ctrl req = putStrLn "ctrl callback"
