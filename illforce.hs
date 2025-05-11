@@ -111,7 +111,8 @@ outtexts opts dirrec = mapM (outtext opts) dirrec
   normentry :: Word16 -> Word16 -> (Int, Word16) -> (Float, Float, Int, Int)
   normentry period multiplier (sample, value) =
     ( (fromIntegral period) * (fromIntegral sample) * 0.000001
-    , (fromIntegral multiplier) * (fromIntegral (value .&. 0x0fff)) * 0.000001
+    , (fromIntegral multiplier)
+      * (fromIntegral (value .&. 0x0fff) - 2048) * 0.000001
     , if testBit value 15 then 1 else 0
     , if testBit value 14 then 1 else 0
     )
